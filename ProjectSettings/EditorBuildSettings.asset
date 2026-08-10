@@ -6,8 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/VRPhotoCameraTest.unity
-    guid: 835651eddbf20dc49a261e9631af90a3
+    path: Assets/Scenes/TitleScene.unity
+    guid: 8169c08561e6d454c85e9c52929bcc67
+  - enabled: 1
+    path: Assets/Scenes/TestScene.unity
+    guid: ff401da2708cdd648aa774aff9a66372
   - enabled: 1
     path: Assets/Scenes/VRPhotoResultTest.unity
     guid: c32926ff0a2f1544ab5d253b9031340f

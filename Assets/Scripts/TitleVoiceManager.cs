@@ -11,6 +11,10 @@ using UnityEngine.InputSystem;
 
 public class TitleVoiceManager : MonoBehaviour
 {
+    [Header("Scene Transition Settings")]
+    [Tooltip("次に遷移するシーンの名前を設定します")]
+    public string targetSceneName = "TestScene";
+
     [Header("Vosk Settings")]
     [Tooltip("StreamingAssets内のVoskモデルフォルダ名")]
     public string modelFolderName = "vosk-model-small-ja-0.22";
@@ -25,6 +29,9 @@ public class TitleVoiceManager : MonoBehaviour
 #if ENABLE_INPUT_SYSTEM
     [Tooltip("VR用: 右手のトリガーボタンで音声認識を行います")]
     public InputAction pushToTalkAction = new InputAction("PushToTalk", InputActionType.Button, "<XRController>{RightHand}/triggerPressed");
+    
+    [Tooltip("デバッグ用: 左手のXボタンで即座に遷移します")]
+    public InputAction debugTransitionAction = new InputAction("DebugTransition", InputActionType.Button, "<XRController>{LeftHand}/primaryButton");
 #endif
     [Tooltip("PC用: 音声認識を行うキー。Spaceキー長押し")]
     public KeyCode pushToTalkKey = KeyCode.Space;
@@ -48,6 +55,7 @@ public class TitleVoiceManager : MonoBehaviour
     {
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.Enable();
+        debugTransitionAction.Enable();
 #endif
 
         // モデルの初期化
@@ -105,10 +113,18 @@ public class TitleVoiceManager : MonoBehaviour
 
         if (!isListening || recognizer == null || audioClip == null || isTransitioning) return;
 
-        // 【デバッグ用バイパス】Enterキーを押したら即座にゲームシーンを開始する
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        // 【デバッグ用バイパス】PCのEnterキー、またはVRの左手Xボタンで即座にシーン開始
+        bool isDebugTriggered = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+#if ENABLE_INPUT_SYSTEM
+        if (debugTransitionAction != null && debugTransitionAction.WasPressedThisFrame())
         {
-            Debug.Log("[Title] Enterキーの入力を検知しました。ゲームを開始します。");
+            isDebugTriggered = true;
+        }
+#endif
+
+        if (isDebugTriggered)
+        {
+            Debug.Log("[Title] デバッグ入力を検知しました。指定のシーンを開始します。");
             StartGameScene();
             return;
         }
@@ -212,14 +228,15 @@ public class TitleVoiceManager : MonoBehaviour
         if (isTransitioning) return;
         isTransitioning = true;
 
-        Debug.Log("GameScene をロード中...");
-        SceneManager.LoadScene("GameScene");
+        Debug.Log($"{targetSceneName} をロード中...");
+        SceneManager.LoadScene(targetSceneName);
     }
 
     void OnDestroy()
     {
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.Disable();
+        debugTransitionAction.Disable();
 #endif
 
         if (isListening)

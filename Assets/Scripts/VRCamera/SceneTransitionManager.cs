@@ -4,17 +4,38 @@ using UnityEngine.SceneManagement;
 public class SceneTransitionManager : MonoBehaviour
 {
     [SerializeField] private string resultSceneName = "VRPhotoResultTest";
-    [SerializeField] private string playSceneName = "VRPhotoCameraTest";
+    [SerializeField] private string playSceneName = "TestScene";
 
     public void LoadResultScene()
     {
-        SceneManager.LoadScene(resultSceneName);
+        if (VRScreenFader.Instance != null)
+        {
+            VRScreenFader.Instance.FadeOut(0.5f, () =>
+            {
+                SceneManager.LoadScene(resultSceneName);
+            });
+        }
+        else
+        {
+            SceneManager.LoadScene(resultSceneName);
+        }
     }
 
     public void LoadPlaySceneAndClear()
     {
-        PhotoGalleryManager.ClearPhotos();
-        SceneManager.LoadScene(playSceneName);
+        if (VRScreenFader.Instance != null)
+        {
+            VRScreenFader.Instance.FadeOut(0.5f, () =>
+            {
+                PhotoGalleryManager.ClearPhotos();
+                SceneManager.LoadScene(playSceneName);
+            });
+        }
+        else
+        {
+            PhotoGalleryManager.ClearPhotos();
+            SceneManager.LoadScene(playSceneName);
+        }
     }
 
     private void Update()

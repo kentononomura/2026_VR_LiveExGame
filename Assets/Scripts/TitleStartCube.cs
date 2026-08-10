@@ -7,6 +7,9 @@ public class TitleStartCube : MonoBehaviour
 {
     private TitleVoiceManager voiceManager;
 
+    [Tooltip("VoiceManagerが無い場合の遷移先シーン")]
+    public string targetSceneName = "TestScene";
+
     void Start()
     {
         // シーン内の TitleVoiceManager を探しておく
@@ -28,7 +31,7 @@ public class TitleStartCube : MonoBehaviour
             else
             {
                 // フォールバック（直ロード）
-                SceneManager.LoadScene("GameScene");
+                SceneManager.LoadScene(targetSceneName);
             }
         }
     }

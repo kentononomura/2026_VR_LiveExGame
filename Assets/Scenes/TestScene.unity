@@ -130,6 +130,8 @@ GameObject:
   - component: {fileID: 97136306}
   - component: {fileID: 97136305}
   - component: {fileID: 97136307}
+  - component: {fileID: 97136309}
+  - component: {fileID: 97136308}
   m_Layer: 0
   m_Name: App Config
   m_TagString: Untagged
@@ -178,6 +180,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fbed71e02da0ee04d83b4aa72ae418d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioDebugger
+--- !u!114 &97136308
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 97136304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5ed79aa12a56e7408afa6e239b4e00d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRScreenFader
+--- !u!114 &97136309
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 97136304}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec9d6be4174063e418d327c8178e3957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRSceneTransitionTrigger
+  targetSceneName: VRPhotoResultTest
+  fadeDuration: 1
 --- !u!1 &151093542
 GameObject:
   m_ObjectHideFlags: 0
