@@ -219,10 +219,14 @@ public class VoiceReactionManager : MonoBehaviour
             Debug.Log($"[Vosk 音声認識の生データ] {jsonResult}");
         }
 
+        string textWithoutSpaces = jsonResult.Replace(" ", "").Replace("　", "");
+
         // シンプルに文字列検索でキーワードが含まれているかチェックする
         foreach (var kr in keywordReactions)
         {
-            if (jsonResult.Contains(kr.keyword))
+            string cleanKeyword = kr.keyword.Replace(" ", "").Replace("　", "");
+
+            if (textWithoutSpaces.Contains(cleanKeyword))
             {
                 Debug.Log($"[Vosk] キーワード検知: {kr.keyword} -> アニメーション: {kr.reactionName}");
                 if (unityChanReaction != null)

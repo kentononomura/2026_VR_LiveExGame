@@ -551,6 +551,83 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1080986683}
   m_LocalEulerAnglesHint: {x: -7.15, y: -180, z: 0}
+--- !u!1 &1878753594
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1878753596}
+  - component: {fileID: 1878753595}
+  m_Layer: 0
+  m_Name: TestSceneVoiceManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1878753595
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eec243021d18d91468294c482563a279, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TestSceneVoiceManager
+  modelFolderName: vosk-model-small-ja-0.22
+  customMicrophoneName: 
+  showRecognitionLog: 1
+  pushToTalkAction:
+    m_Name: PushToTalk
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 08aa4cb2-f7b2-4aa1-8a10-af35b6901bea
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: 1dba0368-7c35-48e3-9291-77b859c7971a
+      m_Path: <XRController>{LeftHand}/trigger
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: PushToTalk
+      m_Flags: 0
+    m_Flags: 0
+  keywordReactions:
+  - keyword: "\u3053\u3063\u3061\u307F\u3066"
+    reactionName: smile1@unitychan
+  - keyword: "\u3053\u3063\u3061\u898B\u3066"
+    reactionName: smile1@unitychan
+  - keyword: "\u308F\u3089\u3063\u3066"
+    reactionName: smile2@unitychan
+  - keyword: "\u7B11\u3063\u3066"
+    reactionName: smile2@unitychan
+  - keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
+    reactionName: default@unitychan
+  lookAtDuration: 3
+  rigBlendSpeed: 5
+--- !u!4 &1878753596
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2059686874
 GameObject:
   m_ObjectHideFlags: 0
@@ -590,3 +667,4 @@ SceneRoots:
   - {fileID: 1080986683}
   - {fileID: 97136306}
   - {fileID: 151093544}
+  - {fileID: 1878753596}
