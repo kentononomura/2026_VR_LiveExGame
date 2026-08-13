@@ -1493,6 +1493,7 @@ GameObject:
   - component: {fileID: 5363442382113248400}
   - component: {fileID: 951220033867804741}
   - component: {fileID: 111758899783700117}
+  - component: {fileID: 189507872427878492}
   m_Layer: 0
   m_Name: XROriginVR
   m_TagString: Untagged
@@ -1546,6 +1547,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Inputs.InputActionManager
   m_ActionAssets: []
+--- !u!114 &189507872427878492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8083774992092227344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 262a9cc58668156439787361f431534f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRStartVisualizer
+  gizmoColor: {r: 0, g: 1, b: 0.5, a: 0.5}
+  estimatedHeight: 1.6
+  radius: 0.3
 --- !u!1 &8402262000861293970
 GameObject:
   m_ObjectHideFlags: 0
