@@ -55,6 +55,9 @@ public class TestSceneVoiceManager : MonoBehaviour
 
     void Start()
     {
+        // TestSceneでは右手にスマホカメラを持つため、右手のペンライト（Saber）を非表示にする
+        StartCoroutine(HideRightSaberRoutine());
+
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.expectedControlType = "Axis";
         pushToTalkAction.Enable();
@@ -71,6 +74,28 @@ public class TestSceneVoiceManager : MonoBehaviour
                 recognizer.SetWords(true);
                 isModelLoaded = true;
             });
+        }
+    }
+
+    private IEnumerator HideRightSaberRoutine()
+    {
+        // SaberのStart()によるモデル生成を待つため1フレーム待機
+        yield return null; 
+        
+        Saber[] sabers = FindObjectsByType<Saber>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var saber in sabers)
+        {
+            if (saber.handType == Saber.HandType.Right)
+            {
+                saber.enabled = false;
+                foreach (Transform child in saber.transform)
+                {
+                    if (child.name == "SaberVisual" || child.name == "HitboxVisual")
+                    {
+                        Destroy(child.gameObject);
+                    }
+                }
+            }
         }
     }
 

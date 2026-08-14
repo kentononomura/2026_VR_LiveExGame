@@ -235,6 +235,18 @@ PrefabInstance:
       propertyPath: m_LocalPosition.x
       value: -0.273
       objectReference: {fileID: 0}
+    - target: {fileID: 1319617001823821829, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2483253436578378148, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5132724515512925118, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5363442382113248400, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -282,6 +294,10 @@ PrefabInstance:
     - target: {fileID: 8083774992092227344, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
       propertyPath: m_Name
       value: XROriginVR
+      objectReference: {fileID: 0}
+    - target: {fileID: 8522189386825379740, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -29,6 +29,8 @@ public class Saber : MonoBehaviour
     public GameObject visualPrefab;
     [Tooltip("生成時のモデルの向き（角度）。UIなどを正面に向けるために調整できます。")]
     public Vector3 visualRotation = new Vector3(90f, 90f, 0f);
+    [Tooltip("生成時のモデルの位置ズレ補正。コントローラーの持ち手とペンライトの持ち手を合わせるのに使います。")]
+    public Vector3 visualPositionOffset = Vector3.zero;
 
     // スイングの速さを記録（Note.cs側で判定に使用します）
     public float VelocityMagnitude { get; private set; }
@@ -49,7 +51,9 @@ public class Saber : MonoBehaviour
             
             // ユーザー指定によりスケールを(2,2,2)に固定
             visual.transform.localScale = new Vector3(2f, 2f, 2f);
-            visual.transform.localPosition = Vector3.zero;
+            
+            // ユーザー指定の位置ズレ補正を適用
+            visual.transform.localPosition = visualPositionOffset;
 
             // 色と発光（Emission）の適用
             Renderer[] renderers = visual.GetComponentsInChildren<Renderer>();
