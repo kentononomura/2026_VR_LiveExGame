@@ -1,189 +1,531 @@
 fileFormatVersion: 2
 guid: a781cecdb1e8145c3afcb43f4bcb646d
 ModelImporter:
-  serializedVersion: 16
-  fileIDToRecycleName:
-    100000: //RootNode
-    100002: Beem
-    100004: frag01
-    100006: frag017
-    100008: frag018
-    100010: frag019
-    100012: frag020
-    100014: frag021
-    100016: frag022
-    100018: frag023
-    100020: frag024
-    100022: frag025
-    100024: frag026
-    100026: frag07
-    100028: frag08
-    100030: frag09
-    100032: frag10
-    100034: frag11
-    100036: frag12
-    100038: frag13
-    100040: frag14
-    100042: frag15
-    100044: frag16
-    100046: J_light_05
-    100048: J_wave_in
-    100050: J_wave_in2
-    100052: J_wave_out
-    100054: J_wave_out2
-    100056: Sphere001
-    100058: Sphere002
-    100060: Sphere003
-    100062: Sphere004
-    100064: Sphere005
-    100066: stage_beemEffect_01
-    100068: UnityAxis
-    100070: wave_002
-    100072: wave_01
-    400000: //RootNode
-    400002: Beem
-    400004: frag01
-    400006: frag017
-    400008: frag018
-    400010: frag019
-    400012: frag020
-    400014: frag021
-    400016: frag022
-    400018: frag023
-    400020: frag024
-    400022: frag025
-    400024: frag026
-    400026: frag07
-    400028: frag08
-    400030: frag09
-    400032: frag10
-    400034: frag11
-    400036: frag12
-    400038: frag13
-    400040: frag14
-    400042: frag15
-    400044: frag16
-    400046: J_light_05
-    400048: J_wave_in
-    400050: J_wave_in2
-    400052: J_wave_out
-    400054: J_wave_out2
-    400056: Sphere001
-    400058: Sphere002
-    400060: Sphere003
-    400062: Sphere004
-    400064: Sphere005
-    400066: stage_beemEffect_01
-    400068: UnityAxis
-    400070: wave_002
-    400072: wave_01
-    2300000: frag01
-    2300002: frag017
-    2300004: frag018
-    2300006: frag019
-    2300008: frag020
-    2300010: frag021
-    2300012: frag022
-    2300014: frag023
-    2300016: frag024
-    2300018: frag025
-    2300020: frag026
-    2300022: frag07
-    2300024: frag08
-    2300026: frag09
-    2300028: frag10
-    2300030: frag11
-    2300032: frag12
-    2300034: frag13
-    2300036: frag14
-    2300038: frag15
-    2300040: frag16
-    2300042: Sphere001
-    2300044: Sphere002
-    2300046: Sphere003
-    2300048: Sphere004
-    2300050: Sphere005
-    3300000: frag01
-    3300002: frag017
-    3300004: frag018
-    3300006: frag019
-    3300008: frag020
-    3300010: frag021
-    3300012: frag022
-    3300014: frag023
-    3300016: frag024
-    3300018: frag025
-    3300020: frag026
-    3300022: frag07
-    3300024: frag08
-    3300026: frag09
-    3300028: frag10
-    3300030: frag11
-    3300032: frag12
-    3300034: frag13
-    3300036: frag14
-    3300038: frag15
-    3300040: frag16
-    3300042: Sphere001
-    3300044: Sphere002
-    3300046: Sphere003
-    3300048: Sphere004
-    3300050: Sphere005
-    4300000: Beem
-    4300002: Sphere001
-    4300004: Sphere002
-    4300006: Sphere003
-    4300008: Sphere004
-    4300010: wave_01
-    4300012: wave_002
-    4300014: frag01
-    4300016: Sphere005
-    4300018: frag16
-    4300020: frag15
-    4300022: frag14
-    4300024: frag13
-    4300026: frag12
-    4300028: frag11
-    4300030: frag10
-    4300032: frag09
-    4300034: frag08
-    4300036: frag07
-    4300038: frag017
-    4300040: frag018
-    4300042: frag019
-    4300044: frag020
-    4300046: frag021
-    4300048: frag022
-    4300050: frag023
-    4300052: frag024
-    4300054: frag025
-    4300056: frag026
-    7400000: Start
-    7400002: Stay
-    7400004: End
-    9500000: //RootNode
-    13700000: Beem
-    13700002: wave_002
-    13700004: wave_01
+  serializedVersion: 24501
+  internalIDToNameTable:
+  - first:
+      1: 100000
+    second: //RootNode
+  - first:
+      1: 100002
+    second: Beem
+  - first:
+      1: 100004
+    second: frag01
+  - first:
+      1: 100006
+    second: frag017
+  - first:
+      1: 100008
+    second: frag018
+  - first:
+      1: 100010
+    second: frag019
+  - first:
+      1: 100012
+    second: frag020
+  - first:
+      1: 100014
+    second: frag021
+  - first:
+      1: 100016
+    second: frag022
+  - first:
+      1: 100018
+    second: frag023
+  - first:
+      1: 100020
+    second: frag024
+  - first:
+      1: 100022
+    second: frag025
+  - first:
+      1: 100024
+    second: frag026
+  - first:
+      1: 100026
+    second: frag07
+  - first:
+      1: 100028
+    second: frag08
+  - first:
+      1: 100030
+    second: frag09
+  - first:
+      1: 100032
+    second: frag10
+  - first:
+      1: 100034
+    second: frag11
+  - first:
+      1: 100036
+    second: frag12
+  - first:
+      1: 100038
+    second: frag13
+  - first:
+      1: 100040
+    second: frag14
+  - first:
+      1: 100042
+    second: frag15
+  - first:
+      1: 100044
+    second: frag16
+  - first:
+      1: 100046
+    second: J_light_05
+  - first:
+      1: 100048
+    second: J_wave_in
+  - first:
+      1: 100050
+    second: J_wave_in2
+  - first:
+      1: 100052
+    second: J_wave_out
+  - first:
+      1: 100054
+    second: J_wave_out2
+  - first:
+      1: 100056
+    second: Sphere001
+  - first:
+      1: 100058
+    second: Sphere002
+  - first:
+      1: 100060
+    second: Sphere003
+  - first:
+      1: 100062
+    second: Sphere004
+  - first:
+      1: 100064
+    second: Sphere005
+  - first:
+      1: 100066
+    second: stage_beemEffect_01
+  - first:
+      1: 100068
+    second: UnityAxis
+  - first:
+      1: 100070
+    second: wave_002
+  - first:
+      1: 100072
+    second: wave_01
+  - first:
+      4: 400000
+    second: //RootNode
+  - first:
+      4: 400002
+    second: Beem
+  - first:
+      4: 400004
+    second: frag01
+  - first:
+      4: 400006
+    second: frag017
+  - first:
+      4: 400008
+    second: frag018
+  - first:
+      4: 400010
+    second: frag019
+  - first:
+      4: 400012
+    second: frag020
+  - first:
+      4: 400014
+    second: frag021
+  - first:
+      4: 400016
+    second: frag022
+  - first:
+      4: 400018
+    second: frag023
+  - first:
+      4: 400020
+    second: frag024
+  - first:
+      4: 400022
+    second: frag025
+  - first:
+      4: 400024
+    second: frag026
+  - first:
+      4: 400026
+    second: frag07
+  - first:
+      4: 400028
+    second: frag08
+  - first:
+      4: 400030
+    second: frag09
+  - first:
+      4: 400032
+    second: frag10
+  - first:
+      4: 400034
+    second: frag11
+  - first:
+      4: 400036
+    second: frag12
+  - first:
+      4: 400038
+    second: frag13
+  - first:
+      4: 400040
+    second: frag14
+  - first:
+      4: 400042
+    second: frag15
+  - first:
+      4: 400044
+    second: frag16
+  - first:
+      4: 400046
+    second: J_light_05
+  - first:
+      4: 400048
+    second: J_wave_in
+  - first:
+      4: 400050
+    second: J_wave_in2
+  - first:
+      4: 400052
+    second: J_wave_out
+  - first:
+      4: 400054
+    second: J_wave_out2
+  - first:
+      4: 400056
+    second: Sphere001
+  - first:
+      4: 400058
+    second: Sphere002
+  - first:
+      4: 400060
+    second: Sphere003
+  - first:
+      4: 400062
+    second: Sphere004
+  - first:
+      4: 400064
+    second: Sphere005
+  - first:
+      4: 400066
+    second: stage_beemEffect_01
+  - first:
+      4: 400068
+    second: UnityAxis
+  - first:
+      4: 400070
+    second: wave_002
+  - first:
+      4: 400072
+    second: wave_01
+  - first:
+      23: 2300000
+    second: frag01
+  - first:
+      23: 2300002
+    second: frag017
+  - first:
+      23: 2300004
+    second: frag018
+  - first:
+      23: 2300006
+    second: frag019
+  - first:
+      23: 2300008
+    second: frag020
+  - first:
+      23: 2300010
+    second: frag021
+  - first:
+      23: 2300012
+    second: frag022
+  - first:
+      23: 2300014
+    second: frag023
+  - first:
+      23: 2300016
+    second: frag024
+  - first:
+      23: 2300018
+    second: frag025
+  - first:
+      23: 2300020
+    second: frag026
+  - first:
+      23: 2300022
+    second: frag07
+  - first:
+      23: 2300024
+    second: frag08
+  - first:
+      23: 2300026
+    second: frag09
+  - first:
+      23: 2300028
+    second: frag10
+  - first:
+      23: 2300030
+    second: frag11
+  - first:
+      23: 2300032
+    second: frag12
+  - first:
+      23: 2300034
+    second: frag13
+  - first:
+      23: 2300036
+    second: frag14
+  - first:
+      23: 2300038
+    second: frag15
+  - first:
+      23: 2300040
+    second: frag16
+  - first:
+      23: 2300042
+    second: Sphere001
+  - first:
+      23: 2300044
+    second: Sphere002
+  - first:
+      23: 2300046
+    second: Sphere003
+  - first:
+      23: 2300048
+    second: Sphere004
+  - first:
+      23: 2300050
+    second: Sphere005
+  - first:
+      33: 3300000
+    second: frag01
+  - first:
+      33: 3300002
+    second: frag017
+  - first:
+      33: 3300004
+    second: frag018
+  - first:
+      33: 3300006
+    second: frag019
+  - first:
+      33: 3300008
+    second: frag020
+  - first:
+      33: 3300010
+    second: frag021
+  - first:
+      33: 3300012
+    second: frag022
+  - first:
+      33: 3300014
+    second: frag023
+  - first:
+      33: 3300016
+    second: frag024
+  - first:
+      33: 3300018
+    second: frag025
+  - first:
+      33: 3300020
+    second: frag026
+  - first:
+      33: 3300022
+    second: frag07
+  - first:
+      33: 3300024
+    second: frag08
+  - first:
+      33: 3300026
+    second: frag09
+  - first:
+      33: 3300028
+    second: frag10
+  - first:
+      33: 3300030
+    second: frag11
+  - first:
+      33: 3300032
+    second: frag12
+  - first:
+      33: 3300034
+    second: frag13
+  - first:
+      33: 3300036
+    second: frag14
+  - first:
+      33: 3300038
+    second: frag15
+  - first:
+      33: 3300040
+    second: frag16
+  - first:
+      33: 3300042
+    second: Sphere001
+  - first:
+      33: 3300044
+    second: Sphere002
+  - first:
+      33: 3300046
+    second: Sphere003
+  - first:
+      33: 3300048
+    second: Sphere004
+  - first:
+      33: 3300050
+    second: Sphere005
+  - first:
+      43: 4300000
+    second: Beem
+  - first:
+      43: 4300002
+    second: Sphere001
+  - first:
+      43: 4300004
+    second: Sphere002
+  - first:
+      43: 4300006
+    second: Sphere003
+  - first:
+      43: 4300008
+    second: Sphere004
+  - first:
+      43: 4300010
+    second: wave_01
+  - first:
+      43: 4300012
+    second: wave_002
+  - first:
+      43: 4300014
+    second: frag01
+  - first:
+      43: 4300016
+    second: Sphere005
+  - first:
+      43: 4300018
+    second: frag16
+  - first:
+      43: 4300020
+    second: frag15
+  - first:
+      43: 4300022
+    second: frag14
+  - first:
+      43: 4300024
+    second: frag13
+  - first:
+      43: 4300026
+    second: frag12
+  - first:
+      43: 4300028
+    second: frag11
+  - first:
+      43: 4300030
+    second: frag10
+  - first:
+      43: 4300032
+    second: frag09
+  - first:
+      43: 4300034
+    second: frag08
+  - first:
+      43: 4300036
+    second: frag07
+  - first:
+      43: 4300038
+    second: frag017
+  - first:
+      43: 4300040
+    second: frag018
+  - first:
+      43: 4300042
+    second: frag019
+  - first:
+      43: 4300044
+    second: frag020
+  - first:
+      43: 4300046
+    second: frag021
+  - first:
+      43: 4300048
+    second: frag022
+  - first:
+      43: 4300050
+    second: frag023
+  - first:
+      43: 4300052
+    second: frag024
+  - first:
+      43: 4300054
+    second: frag025
+  - first:
+      43: 4300056
+    second: frag026
+  - first:
+      74: 7400000
+    second: Start
+  - first:
+      74: 7400002
+    second: Stay
+  - first:
+      74: 7400004
+    second: End
+  - first:
+      95: 9500000
+    second: //RootNode
+  - first:
+      137: 13700000
+    second: Beem
+  - first:
+      137: 13700002
+    second: wave_002
+  - first:
+      137: 13700004
+    second: wave_01
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: light_green
+    second: {fileID: 2100000, guid: 76cdbed4f26054d4eaa2dabfa52a48ec, type: 2}
   materials:
-    importMaterials: 1
+    materialImportMode: 1
     materialName: 0
     materialSearch: 1
+    materialLocation: 1
+    searchTexturesGlobally: 1
   animations:
     legacyGenerateAnimations: 4
     bakeSimulation: 0
+    resampleCurves: 1
     optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
     motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
     animationCompression: 1
-    animationRotationError: .5
-    animationPositionError: .5
-    animationScaleError: .5
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
     animationWrapMode: 0
     extraExposedTransformPaths: []
+    extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
       name: Start
       takeName: Take 001
+      internalID: 0
       firstFrame: 0
       lastFrame: 15
       wrapMode: 0
@@ -191,6 +533,7 @@ ModelImporter:
       level: 0
       cycleOffset: 0
       loop: 0
+      hasAdditiveReferencePose: 0
       loopTime: 0
       loopBlend: 0
       loopBlendOrientation: 0
@@ -281,9 +624,11 @@ ModelImporter:
         weight: 1
       maskType: 0
       maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: Stay
       takeName: Take 001
+      internalID: 0
       firstFrame: 15
       lastFrame: 25
       wrapMode: 0
@@ -291,6 +636,7 @@ ModelImporter:
       level: 0
       cycleOffset: 0
       loop: 0
+      hasAdditiveReferencePose: 0
       loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 0
@@ -381,9 +727,11 @@ ModelImporter:
         weight: 1
       maskType: 0
       maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
     - serializedVersion: 16
       name: End
       takeName: Take 001
+      internalID: 0
       firstFrame: 25
       lastFrame: 30
       wrapMode: 0
@@ -391,6 +739,7 @@ ModelImporter:
       level: 0
       cycleOffset: 0
       loop: 0
+      hasAdditiveReferencePose: 0
       loopTime: 0
       loopBlend: 0
       loopBlendOrientation: 0
@@ -481,41 +830,85 @@ ModelImporter:
         weight: 1
       maskType: 0
       maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
     isReadable: 0
   meshes:
     lODScreenPercentages: []
-    globalScale: .00999999978
+    globalScale: 0.01
     meshCompression: 0
     addColliders: 0
+    useSRGBMaterialColor: 1
+    sortHierarchyByName: 1
+    importPhysicalCameras: 0
+    importVisibility: 0
     importBlendShapes: 0
+    importCameras: 0
+    importLights: 0
+    nodeNameCollisionStrategy: 0
+    fileIdsGeneration: 1
     swapUVChannels: 0
     generateSecondaryUV: 0
     useFileUnits: 1
-    optimizeMeshForGPU: 1
+    keepQuads: 0
     weldVertices: 1
+    bakeAxisConversion: 0
+    preserveHierarchy: 0
+    skinWeightsMode: 0
+    maxBonesPerVertex: 4
+    minBoneWeight: 0.001
+    optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
+    importUVs: -1
+    importVertexColors: 1
+    meshOptimizationFlags: -1
+    indexFormat: 1
     secondaryUVAngleDistortion: 8
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
+    secondaryUVMarginMethod: 0
+    secondaryUVMinLightmapResolution: 40
+    secondaryUVMinObjectScale: 1
     secondaryUVPackMargin: 4
+    useFileScale: 0
+    strictVertexDataChecks: 0
   tangentSpace:
     normalSmoothAngle: 60
-    splitTangentsAcrossUV: 1
     normalImportMode: 0
-    tangentImportMode: 1
+    tangentImportMode: 4
+    normalCalculationMode: 0
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 1
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+    calculateBlendshapeNormalsDeltaFromImportedNormals: 1
+  referencedClips: []
   importAnimation: 1
-  copyAvatar: 0
   humanDescription:
+    serializedVersion: 3
     human: []
     skeleton: []
-    armTwist: .5
-    foreArmTwist: .5
-    upperLegTwist: .5
-    legTwist: .5
-    armStretch: .0500000007
-    legStretch: .0500000007
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
     feetSpacing: 0
+    globalScale: 0.01
     rootMotionBoneName: stage_beemEffect_01
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 0
   lastHumanDescriptionAvatarSource: {instanceID: 0}
+  autoGenerateAvatarMappingIfUnspecified: 1
   animationType: 2
+  humanoidOversampling: 1
+  avatarSetup: 1
+  addHumanoidExtraRootOnlyWhenUsingAvatar: 0
+  importBlendShapeDeformPercent: 0
+  remapMaterialsIfMaterialImportModeIsNone: 1
   additionalBone: 0
   userData: 
+  assetBundleName: 
+  assetBundleVariant: 

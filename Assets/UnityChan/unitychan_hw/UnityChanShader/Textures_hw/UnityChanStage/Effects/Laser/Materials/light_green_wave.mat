@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: light_green
+  m_Name: light_green_wave
   m_Shader: {fileID: 4800000, guid: 650dd9526735d5b46b79224bc6e94025, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -66,8 +66,8 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 6.5899997, g: 10, b: 0, a: 1}
-    - _Color: {r: 6.5900006, g: 10.000001, b: 0, a: 1}
+    - _BaseColor: {r: 0.13, g: 0.2, b: 0, a: 1}
+    - _Color: {r: 0.12999997, g: 0.19999996, b: 0, a: 1}
     - _Emission: {r: 0.72491705, g: 1, b: 0.2205882, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
