@@ -82,7 +82,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         // SaberのStart()によるモデル生成を待つため1フレーム待機
         yield return null; 
         
-        Saber[] sabers = FindObjectsByType<Saber>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Saber[] sabers = FindObjectsByType<Saber>(FindObjectsInactive.Include);
         foreach (var saber in sabers)
         {
             if (saber.handType == Saber.HandType.Right)
@@ -90,7 +90,7 @@ public class TestSceneVoiceManager : MonoBehaviour
                 saber.enabled = false;
                 foreach (Transform child in saber.transform)
                 {
-                    if (child.name == "SaberVisual" || child.name == "HitboxVisual")
+                    if (child.name == "SaberVisual" || child.name == "HitboxVisual" || child.name == "PenlightMeterCanvas")
                     {
                         Destroy(child.gameObject);
                     }

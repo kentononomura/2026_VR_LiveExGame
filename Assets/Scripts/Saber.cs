@@ -165,7 +165,11 @@ public class Saber : MonoBehaviour
         }
 
         // 物理エンジンのトリガー判定用
-        Rigidbody rb = gameObject.AddComponent<Rigidbody>();
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+        }
         rb.isKinematic = true;
         rb.useGravity = false;
 

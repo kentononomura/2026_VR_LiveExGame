@@ -4,7 +4,21 @@ using UnityEngine.UI;
 
 public class VRScreenFader : MonoBehaviour
 {
-    public static VRScreenFader Instance { get; private set; }
+    private static VRScreenFader _instance;
+    public static VRScreenFader Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                var obj = new GameObject("VRScreenFaderPersistent");
+                DontDestroyOnLoad(obj);
+                _instance = obj.AddComponent<VRScreenFader>();
+            }
+            return _instance;
+        }
+        private set { _instance = value; }
+    }
 
     private Canvas fadeCanvas;
     private Image fadeImage;
@@ -12,15 +26,47 @@ public class VRScreenFader : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (_instance != null && _instance != this)
         {
-            Destroy(gameObject);
+            Destroy(this); // スクリプト単体を破棄（親オブジェクトは壊さない）
             return;
         }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
 
+        // 自分がApp Configなどの他のオブジェクトにアタッチされている場合、
+        // フェード専用の独立したオブジェクトを生成してそこに機能を移譲する。
+        // （これによりApp Config全体がDontDestroyOnLoadになってしまうバグを防ぐ）
+        if (gameObject.name != "VRScreenFaderPersistent")
+        {
+            GameObject persistentObj = new GameObject("VRScreenFaderPersistent");
+            DontDestroyOnLoad(persistentObj);
+            
+            // 新しいオブジェクトに自身と同じコンポーネントを追加（追加時に新しいAwakeが走る）
+            persistentObj.AddComponent<VRScreenFader>();
+            
+            // 元のオブジェクトからこのスクリプトだけを削除
+            Destroy(this);
+            return;
+        }
+
+        Instance = this;
         CreateFadeCanvas();
+        
+        // シーンがロードされたら自動的にフェードインする
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // シーンロード時に自動で画面を明るくする
+        if (gameObject.activeInHierarchy)
+        {
+            FadeIn(1.0f, null);
+        }
     }
 
     private void CreateFadeCanvas()
@@ -30,7 +76,9 @@ public class VRScreenFader : MonoBehaviour
         canvasObj.transform.SetParent(transform);
         
         fadeCanvas = canvasObj.AddComponent<Canvas>();
-        fadeCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        fadeCanvas.renderMode = RenderMode.ScreenSpaceCamera; // VR対応: OverlayではなくCameraを使う
+        fadeCanvas.worldCamera = Camera.main;
+        fadeCanvas.planeDistance = 0.1f; // カメラの10cm前に配置
         fadeCanvas.sortingOrder = 9999;
 
         canvasObj.AddComponent<CanvasScaler>();
@@ -49,6 +97,15 @@ public class VRScreenFader : MonoBehaviour
         rect.anchorMax = Vector2.one;
         rect.sizeDelta = Vector2.zero;
         rect.anchoredPosition = Vector2.zero;
+    }
+
+    private void Update()
+    {
+        // シーン遷移などでメインカメラが変わった場合に自動追従する
+        if (fadeCanvas != null && fadeCanvas.worldCamera == null)
+        {
+            fadeCanvas.worldCamera = Camera.main;
+        }
     }
 
     public void FadeOut(float duration, System.Action onComplete)

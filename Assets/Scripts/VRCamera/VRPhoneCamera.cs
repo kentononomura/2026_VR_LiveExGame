@@ -9,6 +9,10 @@ public class VRPhoneCamera : MonoBehaviour
     [SerializeField] private RenderTexture viewfinderTexture;
     [SerializeField] private Renderer screenRenderer;
 
+    [Header("Orientation Settings")]
+    [Tooltip("カメラがこの角度（度）以上傾いたら横長(Landscape)写真として自動回転して保存します。")]
+    [SerializeField] private float landscapeTiltThreshold = 45f;
+
     [Header("Input Settings")]
     [SerializeField] private InputActionProperty shootAction;
 
@@ -119,8 +123,56 @@ public class VRPhoneCamera : MonoBehaviour
         photo.Apply();
         RenderTexture.active = null;
 
+        // --- 自動回転ロジック（重力センサー風の傾き検知） ---
+        float zAngle = transform.eulerAngles.z;
+        // 0~360度を -180~180度に変換して扱いやすくする
+        if (zAngle > 180f) zAngle -= 360f;
+
+        if (zAngle >= landscapeTiltThreshold && zAngle <= (180f - landscapeTiltThreshold))
+        {
+            // 左に傾いている場合（約90度） -> 現実の「上」は画像の「右」に写る。
+            // 正しい向きに戻すには、画像を反時計回りに90度回転させる必要がある。
+            photo = RotateTexture(photo, false);
+        }
+        else if (zAngle <= -landscapeTiltThreshold && zAngle >= (-180f + landscapeTiltThreshold))
+        {
+            // 右に傾いている場合（約-90度） -> 現実の「上」は画像の「左」に写る。
+            // 正しい向きに戻すには、画像を時計回りに90度回転させる必要がある。
+            photo = RotateTexture(photo, true);
+        }
+
         // Store in static manager
         PhotoGalleryManager.AddPhoto(photo);
-        Debug.Log($"VRPhoneCamera: Captured photo #{PhotoGalleryManager.GetPhotos().Count}");
+        Debug.Log($"VRPhoneCamera: Captured photo #{PhotoGalleryManager.GetPhotos().Count} (Z-Angle: {zAngle:F1})");
+    }
+
+    private Texture2D RotateTexture(Texture2D originalTexture, bool clockwise)
+    {
+        Color32[] original = originalTexture.GetPixels32();
+        int w = originalTexture.width;
+        int h = originalTexture.height;
+        int nw = h; // 新しい幅は元の高さ
+        int nh = w; // 新しい高さは元の幅
+        Color32[] rotated = new Color32[original.Length];
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                int originalIndex = y * w + x;
+                int X = clockwise ? y : (h - 1 - y);
+                int Y = clockwise ? (w - 1 - x) : x;
+                rotated[Y * nw + X] = original[originalIndex];
+            }
+        }
+
+        Texture2D rotatedTexture = new Texture2D(nw, nh, originalTexture.format, false);
+        rotatedTexture.SetPixels32(rotated);
+        rotatedTexture.Apply();
+        
+        // メモリリーク防止のため元の回転前テクスチャは破棄する
+        Destroy(originalTexture);
+        
+        return rotatedTexture;
     }
 }

@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 369b9ebe3a62b904dbc19bd332b44086, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -605,9 +605,17 @@ MonoBehaviour:
     reactionName: smile1@unitychan
   - keyword: "\u3053\u3063\u3061\u898B\u3066"
     reactionName: smile1@unitychan
+  - keyword: "\u3053\u3063\u3061"
+    reactionName: smile1@unitychan
+  - keyword: "\u898B\u3066"
+    reactionName: smile1@unitychan
+  - keyword: "\u307F\u3066"
+    reactionName: smile1@unitychan
   - keyword: "\u308F\u3089\u3063\u3066"
     reactionName: smile2@unitychan
   - keyword: "\u7B11\u3063\u3066"
+    reactionName: smile2@unitychan
+  - keyword: "\u3042\u3063\u3066"
     reactionName: smile2@unitychan
   - keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan

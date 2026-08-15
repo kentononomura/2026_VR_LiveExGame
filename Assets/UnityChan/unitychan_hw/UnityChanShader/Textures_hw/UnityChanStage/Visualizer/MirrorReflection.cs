@@ -130,7 +130,9 @@ public class MirrorReflection : MonoBehaviour
 		reflectionCamera.depthTextureMode = DepthTextureMode.Depth;
 
 		// Render camera using URP's RenderSingleCamera API instead of legacy camera.Render()
+#pragma warning disable 0618
 		UniversalRenderPipeline.RenderSingleCamera(context, reflectionCamera);
+#pragma warning restore 0618
 
 		// copy depth
 		Graphics.SetRenderTarget(m_ReflectionDepthTexture);
