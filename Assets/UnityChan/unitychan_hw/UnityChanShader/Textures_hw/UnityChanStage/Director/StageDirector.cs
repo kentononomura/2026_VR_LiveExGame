@@ -139,7 +139,13 @@ public class StageDirector : MonoBehaviour
 
     public void EndPerformance()
     {
-        //Application.LoadLevel(0);
-        SceneManager.LoadScene(0);
+        if (VRScreenFader.Instance != null)
+        {
+            VRScreenFader.Instance.FadeOut(1.0f, () => SceneManager.LoadSceneAsync("VRPhotoResultTest"));
+        }
+        else
+        {
+            SceneManager.LoadSceneAsync("VRPhotoResultTest");
+        }
     }
 }

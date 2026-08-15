@@ -15,6 +15,9 @@ public class KeywordReaction
     public string keyword;
     [Tooltip("再生するアニメーションのステート名（例: Perfect, Great, Miss, Jump）")]
     public string reactionName;
+    
+    [Tooltip("上半身に再生するAnimatorステート名（例: Wave, Kiss）。空欄なら再生しません")]
+    public string bodyReactionName;
 }
 
 public class VoiceReactionManager : MonoBehaviour

@@ -601,24 +601,48 @@ MonoBehaviour:
       m_Flags: 0
     m_Flags: 0
   keywordReactions:
-  - keyword: "\u3053\u3063\u3061\u307F\u3066"
+  - keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
-  - keyword: "\u3053\u3063\u3061\u898B\u3066"
+    bodyReactionName: 
+  - keyword: "\u3053\u3063\u3061\u5411\u3044\u3066"
     reactionName: smile1@unitychan
+    bodyReactionName: 
   - keyword: "\u3053\u3063\u3061"
     reactionName: smile1@unitychan
+    bodyReactionName: 
+  - keyword: "\u3080\u3044\u3066"
+    reactionName: smile1@unitychan
+    bodyReactionName: 
+  - keyword: "\u3053\u3063\u3061\u898B\u3066"
+    reactionName: smile1@unitychan
+    bodyReactionName: 
+  - keyword: "\u3053\u3063\u3061\u307F\u3066"
+    reactionName: smile1@unitychan
+    bodyReactionName: 
   - keyword: "\u898B\u3066"
     reactionName: smile1@unitychan
+    bodyReactionName: 
   - keyword: "\u307F\u3066"
     reactionName: smile1@unitychan
-  - keyword: "\u308F\u3089\u3063\u3066"
+    bodyReactionName: 
+  - keyword: "\u624B\u632F\u3063\u3066"
     reactionName: smile2@unitychan
-  - keyword: "\u7B11\u3063\u3066"
+    bodyReactionName: Wave
+  - keyword: "\u632F\u3063\u3066"
     reactionName: smile2@unitychan
-  - keyword: "\u3042\u3063\u3066"
+    bodyReactionName: Wave
+  - keyword: "\u3075\u3063\u3066"
     reactionName: smile2@unitychan
+    bodyReactionName: Wave
+  - keyword: "\u304B\u308F\u3044\u3044"
+    reactionName: smile3@unitychan
+    bodyReactionName: Kiss
+  - keyword: "\u6CB3\u4E95"
+    reactionName: smile3@unitychan
+    bodyReactionName: Kiss
   - keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan
+    bodyReactionName: 
   lookAtDuration: 3
   rigBlendSpeed: 5
 --- !u!4 &1878753596

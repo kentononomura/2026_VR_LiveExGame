@@ -27,9 +27,10 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Header("Keywords & Reactions")]
     public List<KeywordReaction> keywordReactions = new List<KeywordReaction>
     {
-        new KeywordReaction { keyword = "こっちむいて", reactionName = "smile1@unitychan" },
-        new KeywordReaction { keyword = "わらって", reactionName = "smile2@unitychan" },
-        new KeywordReaction { keyword = "デフォルト", reactionName = "default@unitychan" }
+        new KeywordReaction { keyword = "こっちむいて", reactionName = "smile1@unitychan", bodyReactionName = "" },
+        new KeywordReaction { keyword = "手振って", reactionName = "smile2@unitychan", bodyReactionName = "Wave" },
+        new KeywordReaction { keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss" },
+        new KeywordReaction { keyword = "デフォルト", reactionName = "default@unitychan", bodyReactionName = "" }
     };
 
     [Header("Reaction Settings")]
@@ -194,6 +195,9 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
     }
 
+    private Animator targetAnimator;
+    private Coroutine bodyReactionCoroutine;
+
     private void TrySetupUnityChan()
     {
         if (unityChanObj != null) return;
@@ -204,6 +208,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         {
             faceUpdate = face;
             unityChanObj = face.gameObject;
+            targetAnimator = unityChanObj.GetComponentInChildren<Animator>();
             SetupAnimationRigging(unityChanObj);
         }
     }
@@ -284,24 +289,47 @@ public class TestSceneVoiceManager : MonoBehaviour
 
             if (textWithoutSpaces.Contains(cleanKeyword))
             {
-                Debug.Log($"[Vosk] キーワード検知: {kr.keyword} -> 表情: {kr.reactionName}");
+                Debug.Log($"[Vosk] キーワード検知: {kr.keyword} -> 表情: {kr.reactionName} / 体: {kr.bodyReactionName}");
                 
+                StopAllCoroutines();
+
                 // 表情を変更
-                if (faceUpdate != null)
+                if (faceUpdate != null && !string.IsNullOrEmpty(kr.reactionName))
                 {
                     faceUpdate.OnCallChangeFace(kr.reactionName);
+                }
+
+                // 体のアニメーションを変更（上半身レイヤー）
+                if (targetAnimator != null && !string.IsNullOrEmpty(kr.bodyReactionName))
+                {
+                    int layerIndex = targetAnimator.GetLayerIndex("ReactionLayer");
+                    if (layerIndex != -1)
+                    {
+                        targetAnimator.SetLayerWeight(layerIndex, 1f);
+                        targetAnimator.CrossFade(kr.bodyReactionName, 0.2f, layerIndex);
+                        // アニメーションの長さ分待機して元の状態に戻す（仮で2.5秒）
+                        StartCoroutine(ResetBodyReactionRoutine(2.5f, layerIndex));
+                    }
                 }
 
                 // 目線を合わせる (Weightを1にする)
                 if (targetRig != null)
                 {
                     targetRigWeight = 1f;
-                    StopAllCoroutines();
                     StartCoroutine(ResetLookAtRoutine());
                 }
                 
                 break;
             }
+        }
+    }
+
+    private IEnumerator ResetBodyReactionRoutine(float delay, int layerIndex)
+    {
+        yield return new WaitForSeconds(delay);
+        if (targetAnimator != null)
+        {
+            targetAnimator.CrossFade("Empty", 0.5f, layerIndex);
         }
     }
 
