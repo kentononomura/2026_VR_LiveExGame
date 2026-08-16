@@ -1321,6 +1321,12 @@ MonoBehaviour:
         m_Flags: 0
       m_Flags: 0
     m_Reference: {fileID: 0}
+  maxZoomRatio: 2
+  zoomSpeed: 1
+  flipZoomUI: 0
+  sliderWidth: 20
+  sliderXOffset: -80
+  zoomTextFontSize: 60
   audioSource: {fileID: 4249944991151373358}
   shutterSound: {fileID: 8300000, guid: 3f36aaa772a2e0342986fddda6acdd4a, type: 3}
   flashMaterial: {fileID: 2100000, guid: a1dde97089ee9fd44b21cc031ed48de4, type: 2}

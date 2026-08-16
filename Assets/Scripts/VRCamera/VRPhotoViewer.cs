@@ -177,6 +177,7 @@ public class VRPhotoViewer : MonoBehaviour
 
     private void OnNextPressed(InputAction.CallbackContext context)
     {
+        if (VRPauseMenu.IsGamePaused()) return;
         float val = context.ReadValue<float>();
         if (val >= 0.8f)
         {
@@ -196,6 +197,7 @@ public class VRPhotoViewer : MonoBehaviour
 
     private void OnPrevPressed(InputAction.CallbackContext context)
     {
+        if (VRPauseMenu.IsGamePaused()) return;
         float val = context.ReadValue<float>();
         if (val >= 0.8f)
         {

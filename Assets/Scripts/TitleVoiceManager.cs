@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using Vosk;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using UnityEngine.SceneManagement;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -48,8 +50,21 @@ public class TitleVoiceManager : MonoBehaviour
     private bool isListening = false;
     private bool isModelLoaded = false;
     private bool isTransitioning = false; // 二重ロード防止
+    private bool isShuttingDown = false;
 
     private const int SampleRate = 16000;
+
+    // Threading and Queueing
+    private enum VoskCommandType { Reset, ProcessAudio, FinalResult }
+    private struct VoskCommand
+    {
+        public VoskCommandType type;
+        public byte[] audioData;
+    }
+    
+    private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
+    private ConcurrentQueue<string> resultQueue = new ConcurrentQueue<string>();
+    private Thread workerThread;
 
     void Start()
     {
@@ -73,8 +88,46 @@ public class TitleVoiceManager : MonoBehaviour
             recognizer = new VoskRecognizer(model, SampleRate);
             recognizer.SetMaxAlternatives(0);
             recognizer.SetWords(true);
+            
+            workerThread = new Thread(VoskWorkerLoop);
+            workerThread.IsBackground = true;
+            workerThread.Start();
+            
             isModelLoaded = true;
         });
+    }
+
+    private void VoskWorkerLoop()
+    {
+        while (!isShuttingDown)
+        {
+            if (commandQueue.TryDequeue(out VoskCommand cmd))
+            {
+                if (cmd.type == VoskCommandType.Reset)
+                {
+                    recognizer.Reset();
+                }
+                else if (cmd.type == VoskCommandType.ProcessAudio && cmd.audioData != null)
+                {
+                    if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioData.Length))
+                    {
+                        resultQueue.Enqueue(recognizer.Result());
+                    }
+                    else
+                    {
+                        resultQueue.Enqueue(recognizer.PartialResult());
+                    }
+                }
+                else if (cmd.type == VoskCommandType.FinalResult)
+                {
+                    resultQueue.Enqueue(recognizer.FinalResult());
+                }
+            }
+            else
+            {
+                Thread.Sleep(10);
+            }
+        }
     }
 
     private void StartMicrophone()
@@ -142,17 +195,22 @@ public class TitleVoiceManager : MonoBehaviour
         }
 #endif
 
+        // メインスレッドでの結果受け取りと処理
+        while (resultQueue.TryDequeue(out string result))
+        {
+            ProcessRecognitionResult(result);
+        }
+
         // プッシュ・トゥ・トークのトリガーイベント
         if (isPressedDown)
         {
-            recognizer.Reset();
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
             Debug.Log($"<color=#00FF00>[Vosk] 🎤 ライブスタートの聞き取りを開始しました（ボタン長押し中）</color>");
         }
 
         if (isReleased)
         {
-            string finalResult = recognizer.FinalResult();
-            ProcessRecognitionResult(finalResult);
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
             Debug.Log($"<color=#FF8800>[Vosk] 🛑 聞き取りを終了しました</color>");
         }
 
@@ -181,17 +239,7 @@ public class TitleVoiceManager : MonoBehaviour
             byte[] byteData = new byte[shortSamples.Length * 2];
             System.Buffer.BlockCopy(shortSamples, 0, byteData, 0, byteData.Length);
 
-            if (recognizer.AcceptWaveform(byteData, byteData.Length))
-            {
-                string result = recognizer.Result();
-                ProcessRecognitionResult(result);
-            }
-            else
-            {
-                // 話している途中の部分認識結果もチェック（よりレスポンスを早くするため）
-                string partialResult = recognizer.PartialResult();
-                CheckKeywordsAndStart(partialResult);
-            }
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.ProcessAudio, audioData = byteData });
         }
     }
 
@@ -248,6 +296,11 @@ public class TitleVoiceManager : MonoBehaviour
         pushToTalkAction.Disable();
         debugTransitionAction.Disable();
 #endif
+        isShuttingDown = true;
+        if (workerThread != null && workerThread.IsAlive)
+        {
+            workerThread.Join(500);
+        }
 
         if (isListening)
         {

@@ -16,6 +16,18 @@ public class VRPhoneCamera : MonoBehaviour
     [Header("Input Settings")]
     [SerializeField] private InputActionProperty shootAction;
 
+    [Header("Zoom Settings")]
+    [SerializeField] private float maxZoomRatio = 1.5f;
+    [SerializeField] private float zoomSpeed = 1.0f;
+    [Tooltip("If the UI is mirrored or on the wrong side, toggle this.")]
+    [SerializeField] private bool flipZoomUI = false;
+
+    [Header("Zoom UI Layout Settings")]
+    [SerializeField] private float sliderWidth = 40f;
+    [Tooltip("Distance from the right edge of the screen")]
+    [SerializeField] private float sliderXOffset = -20f;
+    [SerializeField] private int zoomTextFontSize = 60;
+
     [Header("Effects")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip shutterSound;
@@ -26,28 +38,180 @@ public class VRPhoneCamera : MonoBehaviour
     private bool isFlashActive = false;
     private bool isTriggerDown = false;
 
+    // Zoom state
+    private float currentZoomLevel = 1.0f;
+    private float defaultFOV = 60f;
+    private InputAction zoomInputAction;
+
+    // UI state
+    private Canvas uiCanvas;
+    private UnityEngine.UI.Slider zoomSlider;
+    private UnityEngine.UI.Text zoomText;
+
     private void Awake()
     {
         if (screenRenderer != null)
         {
             originalScreenMaterial = screenRenderer.sharedMaterial;
         }
+
+        if (viewfinderCamera != null)
+        {
+            defaultFOV = viewfinderCamera.fieldOfView;
+        }
+
+        SetupZoomUI();
+    }
+
+    private void SetupZoomUI()
+    {
+        if (screenRenderer == null) return;
+
+        // Create Canvas
+        GameObject canvasObj = new GameObject("CameraUI");
+        canvasObj.transform.SetParent(screenRenderer.transform, false);
+        canvasObj.transform.localPosition = new Vector3(0, 0, -0.001f);
+        
+        // Fix for mirrored UI: Allow toggling rotation between 0 and 180
+        canvasObj.transform.localRotation = flipZoomUI ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+        
+        uiCanvas = canvasObj.AddComponent<Canvas>();
+        uiCanvas.renderMode = RenderMode.WorldSpace;
+        
+        RectTransform canvasRt = canvasObj.GetComponent<RectTransform>();
+        canvasRt.sizeDelta = new Vector2(1000, 1000); 
+        canvasRt.localScale = new Vector3(0.001f, 0.001f, 0.001f); 
+
+        // Create Slider Container
+        GameObject sliderObj = new GameObject("ZoomSlider");
+        sliderObj.transform.SetParent(canvasObj.transform, false);
+        zoomSlider = sliderObj.AddComponent<UnityEngine.UI.Slider>();
+        zoomSlider.direction = UnityEngine.UI.Slider.Direction.BottomToTop;
+        zoomSlider.minValue = 1.0f;
+        zoomSlider.maxValue = maxZoomRatio;
+        zoomSlider.value = currentZoomLevel;
+        zoomSlider.interactable = false; // Display only
+        
+        RectTransform sliderRt = sliderObj.GetComponent<RectTransform>();
+        sliderRt.anchorMin = new Vector2(1, 0.2f);
+        sliderRt.anchorMax = new Vector2(1, 0.8f);
+        sliderRt.pivot = new Vector2(1, 0.5f);
+        sliderRt.anchoredPosition = new Vector2(sliderXOffset, 0); // Use Inspector value
+        sliderRt.sizeDelta = new Vector2(sliderWidth, 0); // Use Inspector value
+
+        // Background
+        GameObject bgObj = new GameObject("Background");
+        bgObj.transform.SetParent(sliderObj.transform, false);
+        var bgImg = bgObj.AddComponent<UnityEngine.UI.Image>();
+        bgImg.color = new Color(0, 0, 0, 0.5f);
+        RectTransform bgRt = bgObj.GetComponent<RectTransform>();
+        bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one;
+        bgRt.sizeDelta = Vector2.zero;
+
+        // Fill Area
+        GameObject fillArea = new GameObject("Fill Area");
+        fillArea.transform.SetParent(sliderObj.transform, false);
+        RectTransform fillAreaRt = fillArea.AddComponent<RectTransform>();
+        fillAreaRt.anchorMin = Vector2.zero; fillAreaRt.anchorMax = Vector2.one;
+        fillAreaRt.sizeDelta = Vector2.zero;
+
+        // Fill
+        GameObject fillObj = new GameObject("Fill");
+        fillObj.transform.SetParent(fillArea.transform, false);
+        var fillImg = fillObj.AddComponent<UnityEngine.UI.Image>();
+        fillImg.color = Color.white;
+        RectTransform fillRt = fillObj.GetComponent<RectTransform>();
+        zoomSlider.fillRect = fillRt;
+
+        // Zoom Text
+        GameObject textObj = new GameObject("ZoomText");
+        textObj.transform.SetParent(sliderObj.transform, false);
+        zoomText = textObj.AddComponent<UnityEngine.UI.Text>();
+        zoomText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        zoomText.fontSize = zoomTextFontSize; // Use Inspector value
+        zoomText.alignment = TextAnchor.MiddleCenter;
+        zoomText.color = Color.white;
+        
+        UnityEngine.UI.Outline outline = textObj.AddComponent<UnityEngine.UI.Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(2, -2);
+        
+        RectTransform textRt = textObj.GetComponent<RectTransform>();
+        textRt.anchorMin = new Vector2(0.5f, 0);
+        textRt.anchorMax = new Vector2(0.5f, 0);
+        textRt.pivot = new Vector2(0.5f, 1);
+        textRt.anchoredPosition = new Vector2(0, -20);
+        textRt.sizeDelta = new Vector2(200, 100);
+        
+        UpdateZoomUI();
     }
 
     private void OnEnable()
     {
-        shootAction.action.Enable();
-        shootAction.action.performed += OnShootPerformed;
+        if (shootAction != null && shootAction.action != null)
+        {
+            shootAction.action.Enable();
+            shootAction.action.performed += OnShootPerformed;
+        }
+
+        // Setup Zoom Action manually for Right Thumbstick Y
+        zoomInputAction = new InputAction(
+            name: "Zoom",
+            type: InputActionType.Value,
+            expectedControlType: "Axis",
+            binding: "<XRController>{RightHand}/thumbstick/y"
+        );
+        zoomInputAction.Enable();
     }
 
     private void OnDisable()
     {
-        shootAction.action.performed -= OnShootPerformed;
-        shootAction.action.Disable();
+        if (shootAction != null && shootAction.action != null)
+        {
+            shootAction.action.performed -= OnShootPerformed;
+            shootAction.action.Disable();
+        }
+
+        if (zoomInputAction != null)
+        {
+            zoomInputAction.Disable();
+        }
+    }
+
+    private void Update()
+    {
+        HandleZoom();
+    }
+
+    private void HandleZoom()
+    {
+        if (VRPauseMenu.IsGamePaused()) return;
+        if (zoomInputAction == null || viewfinderCamera == null) return;
+
+        float zoomInput = zoomInputAction.ReadValue<float>();
+        
+        if (Mathf.Abs(zoomInput) > 0.1f)
+        {
+            // Up is positive (zoom in), Down is negative (zoom out)
+            currentZoomLevel += zoomInput * zoomSpeed * Time.deltaTime;
+            currentZoomLevel = Mathf.Clamp(currentZoomLevel, 1.0f, maxZoomRatio);
+
+            // Calculate FOV. Higher zoom level = smaller FOV
+            viewfinderCamera.fieldOfView = defaultFOV / currentZoomLevel;
+            
+            UpdateZoomUI();
+        }
+    }
+
+    private void UpdateZoomUI()
+    {
+        if (zoomSlider != null) zoomSlider.value = currentZoomLevel;
+        if (zoomText != null) zoomText.text = $"{currentZoomLevel:F1}x";
     }
 
     private void OnShootPerformed(InputAction.CallbackContext context)
     {
+        if (VRPauseMenu.IsGamePaused()) return;
         // Try reading as a float value to handle analog triggers with hysteresis
         float triggerValue = 0f;
         try

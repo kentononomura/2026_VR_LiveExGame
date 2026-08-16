@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using Vosk;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -63,8 +65,21 @@ public class VoiceReactionManager : MonoBehaviour
     private bool isListening = false;
 
     private bool isModelLoaded = false;
+    private bool isShuttingDown = false;
 
     private const int SampleRate = 16000; // Voskは16kHzを推奨
+
+    // Threading and Queueing
+    private enum VoskCommandType { Reset, ProcessAudio, FinalResult }
+    private struct VoskCommand
+    {
+        public VoskCommandType type;
+        public byte[] audioData;
+    }
+    
+    private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
+    private ConcurrentQueue<string> resultQueue = new ConcurrentQueue<string>();
+    private Thread workerThread;
 
     void Start()
     {
@@ -94,9 +109,42 @@ public class VoiceReactionManager : MonoBehaviour
             recognizer.SetMaxAlternatives(0);
             recognizer.SetWords(true);
             
-            // ロード完了フラグを立てて、Update内でメインスレッド処理を呼ぶ
+            // ロード完了後、ワーカースレッドを起動
+            workerThread = new Thread(VoskWorkerLoop);
+            workerThread.IsBackground = true;
+            workerThread.Start();
+            
             isModelLoaded = true;
         });
+    }
+
+    private void VoskWorkerLoop()
+    {
+        while (!isShuttingDown)
+        {
+            if (commandQueue.TryDequeue(out VoskCommand cmd))
+            {
+                if (cmd.type == VoskCommandType.Reset)
+                {
+                    recognizer.Reset();
+                }
+                else if (cmd.type == VoskCommandType.ProcessAudio && cmd.audioData != null)
+                {
+                    if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioData.Length))
+                    {
+                        resultQueue.Enqueue(recognizer.Result());
+                    }
+                }
+                else if (cmd.type == VoskCommandType.FinalResult)
+                {
+                    resultQueue.Enqueue(recognizer.FinalResult());
+                }
+            }
+            else
+            {
+                Thread.Sleep(10); // Sleep slightly to prevent high CPU usage when idle
+            }
+        }
     }
 
     private void StartMicrophone()
@@ -161,17 +209,21 @@ public class VoiceReactionManager : MonoBehaviour
         }
 #endif
 
-        // 【修正点】キー入力の判定を一番最初に行う
+        // 【修正点】結果の受け取り（メインスレッドでのアニメーション再生等）
+        while (resultQueue.TryDequeue(out string result))
+        {
+            ProcessRecognitionResult(result);
+        }
+
         if (isPressedDown)
         {
-            recognizer.Reset();
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
             Debug.Log($"<color=#00FF00>[Vosk] 🎤 音声入力の受付を開始しました</color>");
         }
 
         if (isReleased)
         {
-            string finalResult = recognizer.FinalResult();
-            ProcessRecognitionResult(finalResult);
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
             Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
         }
 
@@ -203,12 +255,8 @@ public class VoiceReactionManager : MonoBehaviour
             byte[] byteData = new byte[shortSamples.Length * 2];
             System.Buffer.BlockCopy(shortSamples, 0, byteData, 0, byteData.Length);
 
-            // Voskへデータを送る
-            if (recognizer.AcceptWaveform(byteData, byteData.Length))
-            {
-                string result = recognizer.Result();
-                ProcessRecognitionResult(result);
-            }
+            // Voskへデータを送る（別スレッドへキューイング）
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.ProcessAudio, audioData = byteData });
         }
     }
 
@@ -249,6 +297,12 @@ public class VoiceReactionManager : MonoBehaviour
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.Disable();
 #endif
+
+        isShuttingDown = true;
+        if (workerThread != null && workerThread.IsAlive)
+        {
+            workerThread.Join(500); // Wait up to 500ms for thread to end
+        }
 
         if (isListening)
         {

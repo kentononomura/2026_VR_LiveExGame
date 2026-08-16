@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using Vosk;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using UnityEngine.Animations.Rigging;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -44,9 +46,22 @@ public class TestSceneVoiceManager : MonoBehaviour
     private int lastSamplePosition = 0;
     private bool isListening = false;
     private bool isModelLoaded = false;
+    private bool isShuttingDown = false;
     private const int SampleRate = 16000;
 
     private bool isLeftTriggerDown = false;
+
+    // Threading and Queueing
+    private enum VoskCommandType { Reset, ProcessAudio, FinalResult }
+    private struct VoskCommand
+    {
+        public VoskCommandType type;
+        public byte[] audioData;
+    }
+    
+    private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
+    private ConcurrentQueue<string> resultQueue = new ConcurrentQueue<string>();
+    private Thread workerThread;
 
     // Unity-chan references
     private GameObject unityChanObj;
@@ -73,8 +88,42 @@ public class TestSceneVoiceManager : MonoBehaviour
                 recognizer = new VoskRecognizer(model, SampleRate);
                 recognizer.SetMaxAlternatives(0);
                 recognizer.SetWords(true);
+                
+                workerThread = new Thread(VoskWorkerLoop);
+                workerThread.IsBackground = true;
+                workerThread.Start();
+                
                 isModelLoaded = true;
             });
+        }
+    }
+
+    private void VoskWorkerLoop()
+    {
+        while (!isShuttingDown)
+        {
+            if (commandQueue.TryDequeue(out VoskCommand cmd))
+            {
+                if (cmd.type == VoskCommandType.Reset)
+                {
+                    recognizer.Reset();
+                }
+                else if (cmd.type == VoskCommandType.ProcessAudio && cmd.audioData != null)
+                {
+                    if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioData.Length))
+                    {
+                        resultQueue.Enqueue(recognizer.Result());
+                    }
+                }
+                else if (cmd.type == VoskCommandType.FinalResult)
+                {
+                    resultQueue.Enqueue(recognizer.FinalResult());
+                }
+            }
+            else
+            {
+                Thread.Sleep(10);
+            }
         }
     }
 
@@ -131,6 +180,12 @@ public class TestSceneVoiceManager : MonoBehaviour
             targetRig.weight = Mathf.Lerp(targetRig.weight, targetRigWeight, Time.deltaTime * rigBlendSpeed);
         }
 
+        // Process queued results on main thread
+        while (resultQueue.TryDequeue(out string result))
+        {
+            ProcessRecognitionResult(result);
+        }
+
         if (isModelLoaded && !isListening)
         {
             StartMicrophone();
@@ -150,7 +205,7 @@ public class TestSceneVoiceManager : MonoBehaviour
                 if (!isLeftTriggerDown)
                 {
                     isLeftTriggerDown = true;
-                    recognizer.Reset();
+                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
                     Debug.Log($"<color=#00FF00>[Vosk] 🎤 左手トリガー検知：音声入力の受付を開始しました</color>");
                 }
                 isHolding = true;
@@ -160,8 +215,7 @@ public class TestSceneVoiceManager : MonoBehaviour
                 if (isLeftTriggerDown)
                 {
                     isLeftTriggerDown = false;
-                    string finalResult = recognizer.FinalResult();
-                    ProcessRecognitionResult(finalResult);
+                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
                     Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
                 }
             }
@@ -188,10 +242,7 @@ public class TestSceneVoiceManager : MonoBehaviour
             byte[] byteData = new byte[shortSamples.Length * 2];
             System.Buffer.BlockCopy(shortSamples, 0, byteData, 0, byteData.Length);
 
-            if (recognizer.AcceptWaveform(byteData, byteData.Length))
-            {
-                ProcessRecognitionResult(recognizer.Result());
-            }
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.ProcessAudio, audioData = byteData });
         }
     }
 
@@ -344,6 +395,12 @@ public class TestSceneVoiceManager : MonoBehaviour
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.Disable();
 #endif
+        isShuttingDown = true;
+        if (workerThread != null && workerThread.IsAlive)
+        {
+            workerThread.Join(500);
+        }
+
         if (isListening) Microphone.End(microphoneDevice);
         if (recognizer != null) recognizer.Dispose();
         if (model != null) model.Dispose();
