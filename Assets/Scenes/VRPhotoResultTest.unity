@@ -151,6 +151,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VRPhotoViewer
   noPhotoTexture: {fileID: 0}
+  flipUIText: 0
+  scoreTextPosition: {x: 0, y: 107}
+  rankTextPosition: {x: -380, y: 357}
+  detailsTextPosition: {x: -169, y: 428}
 --- !u!23 &256721982
 MeshRenderer:
   m_ObjectHideFlags: 0

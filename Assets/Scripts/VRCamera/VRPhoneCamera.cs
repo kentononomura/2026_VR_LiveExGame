@@ -130,20 +130,19 @@ public class VRPhoneCamera : MonoBehaviour
 
         if (zAngle >= landscapeTiltThreshold && zAngle <= (180f - landscapeTiltThreshold))
         {
-            // 左に傾いている場合（約90度） -> 現実の「上」は画像の「右」に写る。
-            // 正しい向きに戻すには、画像を反時計回りに90度回転させる必要がある。
             photo = RotateTexture(photo, false);
         }
         else if (zAngle <= -landscapeTiltThreshold && zAngle >= (-180f + landscapeTiltThreshold))
         {
-            // 右に傾いている場合（約-90度） -> 現実の「上」は画像の「左」に写る。
-            // 正しい向きに戻すには、画像を時計回りに90度回転させる必要がある。
             photo = RotateTexture(photo, true);
         }
 
+        // Evaluate the photo using PhotoEvaluator
+        PhotoData data = PhotoEvaluator.EvaluateScene(viewfinderCamera, photo);
+
         // Store in static manager
-        PhotoGalleryManager.AddPhoto(photo);
-        Debug.Log($"VRPhoneCamera: Captured photo #{PhotoGalleryManager.GetPhotos().Count} (Z-Angle: {zAngle:F1})");
+        PhotoGalleryManager.AddPhoto(data);
+        Debug.Log($"VRPhoneCamera: Captured photo #{PhotoGalleryManager.GetPhotos().Count} (Z-Angle: {zAngle:F1}) - Score: {data.TotalScore} Rank: {data.Rank}");
     }
 
     private Texture2D RotateTexture(Texture2D originalTexture, bool clockwise)

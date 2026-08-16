@@ -1,26 +1,42 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
+public class PhotoData
+{
+    public Texture2D Texture;
+    public int TotalScore;
+    public int CenterBonus;
+    public int GazeBonus;
+    public int PoseBonus;
+    public string Rank;
+}
+
 public static class PhotoGalleryManager
 {
-    private static List<Texture2D> capturedPhotos = new List<Texture2D>();
+    private static List<PhotoData> capturedPhotos = new List<PhotoData>();
 
-    public static List<Texture2D> GetPhotos()
+    public static List<PhotoData> GetPhotos()
     {
+        // Sort photos so the highest score is always first
+        if (capturedPhotos != null)
+        {
+            capturedPhotos.Sort((a, b) => b.TotalScore.CompareTo(a.TotalScore));
+        }
         return capturedPhotos;
     }
 
-    public static void AddPhoto(Texture2D photo)
+    public static void AddPhoto(PhotoData photoData)
     {
-        capturedPhotos.Add(photo);
+        capturedPhotos.Add(photoData);
     }
 
     public static void ClearPhotos()
     {
-        foreach (var photo in capturedPhotos)
+        foreach (var photoData in capturedPhotos)
         {
-            if (photo != null)
-                Object.Destroy(photo);
+            if (photoData != null && photoData.Texture != null)
+                Object.Destroy(photoData.Texture);
         }
         capturedPhotos.Clear();
     }
