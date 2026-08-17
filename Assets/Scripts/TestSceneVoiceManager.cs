@@ -6,6 +6,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Globalization;
+using System.Text;
 using UnityEngine.Animations.Rigging;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -35,9 +37,95 @@ public class TestSceneVoiceManager : MonoBehaviour
         new KeywordReaction { keyword = "デフォルト", reactionName = "default@unitychan", bodyReactionName = "" }
     };
 
+    [Header("Recognition Matching")]
+    [Tooltip("完全一致しなかった認識結果を、レーベンシュタイン距離による類似度で救済します。")]
+    [SerializeField] private bool enableFuzzyMatching = true;
+
+    [Tooltip("発話途中で曖昧一致を成立させる類似度です。誤反応を防ぐため高めに設定します。")]
+    [Range(0.5f, 1f)]
+    [SerializeField] private float partialSimilarityThreshold = 0.9f;
+
+    [Tooltip("ボタンを離した後の確定結果を救済する類似度です。")]
+    [Range(0.5f, 1f)]
+    [SerializeField] private float finalSimilarityThreshold = 0.8f;
+
+    [Tooltip("途中結果の曖昧一致で、同じ候補が安定して認識される必要がある時間（秒）です。")]
+    [Min(0f)]
+    [SerializeField] private float partialStableDuration = 0.2f;
+
+    [Tooltip("曖昧一致を許可するキーワードの最低文字数です。短い単語の誤反応を防ぎます。")]
+    [Min(1)]
+    [SerializeField] private int fuzzyMinimumCharacters = 4;
+
+    [Tooltip("1位と2位の類似度に必要な差です。候補が紛らわしい場合は反応させません。")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float minimumBestMatchMargin = 0.05f;
+
     [Header("Reaction Settings")]
     public float lookAtDuration = 3f;
     public float rigBlendSpeed = 5f;
+
+    [Tooltip("上半身リアクションを再生してからダンスへ戻し始めるまでの時間（秒）です。")]
+    [Min(0f)]
+    [SerializeField] private float bodyReactionDuration = 2.5f;
+
+    [Tooltip("上半身リアクションのWeightを0へ戻す時間（秒）です。急な姿勢変化を防ぎます。")]
+    [Min(0.01f)]
+    [SerializeField] private float bodyReturnBlendDuration = 0.5f;
+
+    [Tooltip("VRカメラ位置の微細な揺れを目線ターゲットへ反映しにくくする時間（秒）です。")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float aimTargetSmoothTime = 0.08f;
+
+    [Tooltip("音声リアクションの表情を維持してからデフォルト表情へ戻すまでの時間（秒）です。")]
+    [Min(0f)]
+    [SerializeField] private float faceReactionDuration = 3f;
+
+    [Header("Upper Body Look At")]
+    [Tooltip("音声リアクション成功時に、胸・首・頭をプレイヤーへ向けます。")]
+    [SerializeField] private bool enableUpperBodyLookAt = true;
+
+    [Tooltip("背骨下部へ配分する追従強度です。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float spineLookWeight = 0.1f;
+
+    [Tooltip("胸へ配分する追従強度です。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float chestLookWeight = 0.15f;
+
+    [Tooltip("胸上部へ配分する追従強度です。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float upperChestLookWeight = 0.25f;
+
+    [Tooltip("首へ配分する追従強度です。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float neckLookWeight = 0.2f;
+
+    [Tooltip("頭へ配分する追従強度です。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float headLookWeight = 0.3f;
+
+    [Tooltip("背骨・胸・首に許可する最大追従角度です。")]
+    [Range(0f, 90f)]
+    [SerializeField] private float upperBodyMaxLookAngle = 40f;
+
+    [Tooltip("頭に許可する最大追従角度です。")]
+    [Range(0f, 120f)]
+    [SerializeField] private float headMaxLookAngle = 70f;
+
+    [Header("Voice Point Settings")]
+    [Tooltip("距離と左手ペンライト色から、リアクション成立ポイントを計算します。")]
+    [SerializeField] private VoicePointEvaluator voicePointEvaluator = new VoicePointEvaluator();
+
+    [Header("Voice Point References (Optional)")]
+    [Tooltip("距離計算に使用するプレイヤー位置です。未設定ならVRカメラを自動取得します。")]
+    [SerializeField] private Transform playerTransformOverride;
+
+    [Tooltip("距離計算に使用するUnityちゃん位置です。未設定なら既存のFaceUpdate参照を使用します。")]
+    [SerializeField] private Transform unityChanTransformOverride;
+
+    [Tooltip("左手ペンライトの既存ゲージコントローラーです。未設定ならSaberのHandTypeから自動取得します。")]
+    [SerializeField] private PenlightGaugeController leftPenlightOverride;
 
     private Model model;
     private VoskRecognizer recognizer;
@@ -50,6 +138,16 @@ public class TestSceneVoiceManager : MonoBehaviour
     private const int SampleRate = 16000;
 
     private bool isLeftTriggerDown = false;
+    private bool hasHandledRecognitionThisPress;
+    private KeywordReaction stablePartialCandidate;
+    private float stablePartialSince;
+
+    [System.Serializable]
+    private class VoskRecognitionResult
+    {
+        public string text;
+        public string partial;
+    }
 
     // Threading and Queueing
     private enum VoskCommandType { Reset, ProcessAudio, FinalResult }
@@ -68,6 +166,7 @@ public class TestSceneVoiceManager : MonoBehaviour
     private UnityChan.FaceUpdate faceUpdate;
     private Rig targetRig;
     private float targetRigWeight = 0f;
+    private LipSyncMouthPriority lipSyncMouthPriority;
 
     void Start()
     {
@@ -212,12 +311,6 @@ public class TestSceneVoiceManager : MonoBehaviour
     {
         TrySetupUnityChan();
 
-        // Smoothly blend the rig weight
-        if (targetRig != null)
-        {
-            targetRig.weight = Mathf.Lerp(targetRig.weight, targetRigWeight, Time.deltaTime * rigBlendSpeed);
-        }
-
         // Process queued results on main thread
         while (resultQueue.TryDequeue(out string result))
         {
@@ -258,6 +351,7 @@ public class TestSceneVoiceManager : MonoBehaviour
             if (!isLeftTriggerDown)
             {
                 isLeftTriggerDown = true;
+                ResetRecognitionMatchState();
                 if (isListening && recognizer != null)
                 {
                     commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
@@ -330,6 +424,9 @@ public class TestSceneVoiceManager : MonoBehaviour
 
     private Animator targetAnimator;
     private Coroutine bodyReactionCoroutine;
+    private Coroutine faceReactionCoroutine;
+    private Coroutine lookAtCoroutine;
+    private Coroutine rigBlendCoroutine;
 
     private void TrySetupUnityChan()
     {
@@ -342,6 +439,11 @@ public class TestSceneVoiceManager : MonoBehaviour
             faceUpdate = face;
             unityChanObj = face.gameObject;
             targetAnimator = unityChanObj.GetComponentInChildren<Animator>();
+            lipSyncMouthPriority = unityChanObj.GetComponent<LipSyncMouthPriority>();
+            if (lipSyncMouthPriority == null)
+            {
+                lipSyncMouthPriority = unityChanObj.AddComponent<LipSyncMouthPriority>();
+            }
             SetupAnimationRigging(unityChanObj);
         }
     }
@@ -359,117 +461,506 @@ public class TestSceneVoiceManager : MonoBehaviour
         targetRig.weight = 0f;
         rigBuilder.layers.Add(new RigLayer(targetRig));
 
-        // 3. Find Head
-        Transform headBone = character.transform.Find("Character1_Reference/Character1_Hips/Character1_Spine/Character1_Spine1/Character1_Spine2/Character1_Neck/Character1_Head");
-        if (headBone == null)
+        if (targetAnimator == null || !targetAnimator.isHuman)
         {
-            Debug.LogWarning("TestSceneVoiceManager: Head bone not found on Unity-chan!");
+            Debug.LogWarning("TestSceneVoiceManager: Humanoid Animatorが見つからないため、上半身の目線制御を設定できません。");
             return;
         }
 
-        // 4. Add MultiAimConstraint
-        var aimObj = new GameObject("HeadAimConstraint");
-        aimObj.transform.SetParent(rigObj.transform, false);
-        var aimConstraint = aimObj.AddComponent<MultiAimConstraint>();
-
-        // 5. Create Target (looking at Main Camera)
-        var mainCam = Camera.main;
+        // 3. Create a shared target that follows the player's VR camera.
+        Camera mainCam = null;
+        Unity.XR.CoreUtils.XROrigin xrOrigin =
+            FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
+        if (xrOrigin != null)
+        {
+            mainCam = xrOrigin.Camera;
+        }
         if (mainCam == null)
         {
-            var xrOrigin = GameObject.Find("XROriginVR");
-            if (xrOrigin != null) mainCam = xrOrigin.GetComponentInChildren<Camera>();
+            mainCam = Camera.main;
         }
         
-        // We will make the aim target constantly follow the camera
         var aimTarget = new GameObject("AimTarget");
-        aimTarget.transform.SetParent(aimObj.transform, false);
-        // Add a script to make the target follow the camera
+        aimTarget.transform.SetParent(rigObj.transform, false);
         var follower = aimTarget.AddComponent<AimTargetFollower>();
         follower.targetCamera = mainCam;
+        follower.smoothTime = aimTargetSmoothTime;
 
-        // 6. Configure constraint
-        var data = aimConstraint.data;
-        data.constrainedObject = headBone;
-        var sourceObjects = data.sourceObjects;
-        sourceObjects.Clear();
-        sourceObjects.Add(new WeightedTransform(aimTarget.transform, 1f));
-        data.sourceObjects = sourceObjects;
-        data.aimAxis = MultiAimConstraintData.Axis.Z;
-        data.upAxis = MultiAimConstraintData.Axis.Y;
-        aimConstraint.data = data;
+        if (mainCam != null)
+        {
+            aimTarget.transform.position = mainCam.transform.position;
+        }
+
+        // 4. Distribute the turn across the existing Humanoid upper-body bones.
+        if (enableUpperBodyLookAt)
+        {
+            AddUpperBodyAimConstraint(
+                rigObj.transform, aimTarget.transform, HumanBodyBones.Spine,
+                "SpineAimConstraint", spineLookWeight, upperBodyMaxLookAngle, false);
+            AddUpperBodyAimConstraint(
+                rigObj.transform, aimTarget.transform, HumanBodyBones.Chest,
+                "ChestAimConstraint", chestLookWeight, upperBodyMaxLookAngle, false);
+            AddUpperBodyAimConstraint(
+                rigObj.transform, aimTarget.transform, HumanBodyBones.UpperChest,
+                "UpperChestAimConstraint", upperChestLookWeight, upperBodyMaxLookAngle, false);
+            AddUpperBodyAimConstraint(
+                rigObj.transform, aimTarget.transform, HumanBodyBones.Neck,
+                "NeckAimConstraint", neckLookWeight, upperBodyMaxLookAngle, false);
+        }
+
+        // Unity-chan's head local Y axis points out of her face.
+        AddUpperBodyAimConstraint(
+            rigObj.transform, aimTarget.transform, HumanBodyBones.Head,
+            "HeadAimConstraint", headLookWeight, headMaxLookAngle, true);
 
         rigBuilder.Build();
-        Debug.Log("TestSceneVoiceManager: Animation Rigging dynamically setup on UnityChan.");
+        Debug.Log("TestSceneVoiceManager: Upper-body look-at rig dynamically setup on UnityChan.");
+    }
+
+    private void AddUpperBodyAimConstraint(
+        Transform rigParent,
+        Transform aimTarget,
+        HumanBodyBones bone,
+        string constraintName,
+        float weight,
+        float maxAngle,
+        bool isHead)
+    {
+        Transform boneTransform = targetAnimator.GetBoneTransform(bone);
+        if (boneTransform == null || weight <= 0f)
+        {
+            return;
+        }
+
+        GameObject constraintObject = new GameObject(constraintName);
+        constraintObject.transform.SetParent(rigParent, false);
+        MultiAimConstraint aimConstraint = constraintObject.AddComponent<MultiAimConstraint>();
+        aimConstraint.weight = weight;
+
+        MultiAimConstraintData data = aimConstraint.data;
+        data.constrainedObject = boneTransform;
+        WeightedTransformArray sources = data.sourceObjects;
+        sources.Clear();
+        sources.Add(new WeightedTransform(aimTarget, 1f));
+        data.sourceObjects = sources;
+        data.maintainOffset = false;
+        data.limits = new Vector2(-maxAngle, maxAngle);
+        data.worldUpType = MultiAimConstraintData.WorldUpType.SceneUp;
+
+        if (isHead)
+        {
+            data.aimAxis = MultiAimConstraintData.Axis.Y;
+            data.upAxis = MultiAimConstraintData.Axis.Z;
+            data.constrainedXAxis = true;
+            data.constrainedYAxis = true;
+            data.constrainedZAxis = false;
+        }
+        else
+        {
+            data.aimAxis = MultiAimConstraintData.Axis.Z;
+            data.upAxis = MultiAimConstraintData.Axis.Y;
+            // The torso only twists horizontally, preserving the song choreography's posture.
+            data.constrainedXAxis = false;
+            data.constrainedYAxis = true;
+            data.constrainedZAxis = false;
+        }
+
+        aimConstraint.data = data;
     }
 
     private void ProcessRecognitionResult(string jsonResult)
     {
-        if (string.IsNullOrEmpty(jsonResult)) return;
+        if (string.IsNullOrEmpty(jsonResult) || hasHandledRecognitionThisPress) return;
 
-        if (showRecognitionLog && jsonResult.Contains("\"text\""))
+        VoskRecognitionResult recognitionResult;
+        try
+        {
+            recognitionResult = JsonUtility.FromJson<VoskRecognitionResult>(jsonResult);
+        }
+        catch (System.ArgumentException)
+        {
+            return;
+        }
+
+        if (recognitionResult == null) return;
+
+        bool isFinalResult = recognitionResult.text != null;
+        string recognizedText = isFinalResult ? recognitionResult.text : recognitionResult.partial;
+        if (string.IsNullOrWhiteSpace(recognizedText)) return;
+
+        if (showRecognitionLog && isFinalResult)
         {
             Debug.Log($"[Vosk TestScene 音声認識] {jsonResult}");
         }
 
-        // Voskは単語（形態素）の間にスペースを入れる仕様があるため、
-        // ユーザーが設定したキーワードと照合しやすくするためにスペースを除去した文字列を作成します。
-        string textWithoutSpaces = jsonResult.Replace(" ", "").Replace("　", "");
+        string normalizedText = NormalizeRecognitionText(recognizedText);
+        if (normalizedText.Length == 0) return;
 
-        foreach (var kr in keywordReactions)
+        KeywordReaction matchedReaction = FindExactMatch(normalizedText);
+        float matchSimilarity = matchedReaction != null ? 1f : 0f;
+
+        if (matchedReaction == null && enableFuzzyMatching)
         {
-            // ユーザーが設定したキーワードからも念のためスペースを除去
-            string cleanKeyword = kr.keyword.Replace(" ", "").Replace("　", "");
+            float threshold = isFinalResult ? finalSimilarityThreshold : partialSimilarityThreshold;
+            matchedReaction = FindBestFuzzyMatch(normalizedText, threshold, out matchSimilarity);
+        }
 
-            if (textWithoutSpaces.Contains(cleanKeyword))
+        if (matchedReaction == null)
+        {
+            stablePartialCandidate = null;
+            return;
+        }
+
+        if (!isFinalResult && matchSimilarity < 1f)
+        {
+            if (stablePartialCandidate != matchedReaction)
             {
-                Debug.Log($"[Vosk] キーワード検知: {kr.keyword} -> 表情: {kr.reactionName} / 体: {kr.bodyReactionName}");
-                
-                StopAllCoroutines();
+                stablePartialCandidate = matchedReaction;
+                stablePartialSince = Time.unscaledTime;
+                return;
+            }
 
-                // 表情を変更
-                if (faceUpdate != null && !string.IsNullOrEmpty(kr.reactionName))
-                {
-                    faceUpdate.OnCallChangeFace(kr.reactionName);
-                }
-
-                // 体のアニメーションを変更（上半身レイヤー）
-                if (targetAnimator != null && !string.IsNullOrEmpty(kr.bodyReactionName))
-                {
-                    int layerIndex = targetAnimator.GetLayerIndex("ReactionLayer");
-                    if (layerIndex != -1)
-                    {
-                        targetAnimator.SetLayerWeight(layerIndex, 1f);
-                        targetAnimator.CrossFade(kr.bodyReactionName, 0.2f, layerIndex);
-                        // アニメーションの長さ分待機して元の状態に戻す（仮で2.5秒）
-                        StartCoroutine(ResetBodyReactionRoutine(2.5f, layerIndex));
-                    }
-                }
-
-                // 目線を合わせる (Weightを1にする)
-                if (targetRig != null)
-                {
-                    targetRigWeight = 1f;
-                    StartCoroutine(ResetLookAtRoutine());
-                }
-                
-                break;
+            if (Time.unscaledTime - stablePartialSince < partialStableDuration)
+            {
+                return;
             }
         }
+
+        hasHandledRecognitionThisPress = true;
+        Debug.Log($"[Vosk] キーワード検知: {matchedReaction.keyword} / 認識: {recognizedText} / 類似度: {matchSimilarity:F2} -> 表情: {matchedReaction.reactionName} / 体: {matchedReaction.bodyReactionName}");
+        ExecuteReaction(matchedReaction);
+    }
+
+    private void ExecuteReaction(KeywordReaction kr)
+    {
+        // 音声認識と既存リアクション実行の間で、今回分だけポイント判定する。
+        // ポイントは保持・蓄積しない。
+        if (!EvaluateCurrentVoicePoint())
+        {
+            return;
+        }
+
+        // 表情を変更
+        if (faceUpdate != null && !string.IsNullOrEmpty(kr.reactionName))
+        {
+            if (faceReactionCoroutine != null)
+            {
+                StopCoroutine(faceReactionCoroutine);
+            }
+
+            faceUpdate.OnCallChangeFace(kr.reactionName);
+            if (lipSyncMouthPriority != null)
+            {
+                lipSyncMouthPriority.PrioritizeFor(faceReactionDuration);
+            }
+            faceReactionCoroutine = StartCoroutine(ResetFaceReactionRoutine(faceReactionDuration));
+        }
+
+        // 体のアニメーションを変更（上半身レイヤー）
+        if (targetAnimator != null && !string.IsNullOrEmpty(kr.bodyReactionName))
+        {
+            int layerIndex = targetAnimator.GetLayerIndex("ReactionLayer");
+            if (layerIndex != -1)
+            {
+                if (bodyReactionCoroutine != null)
+                {
+                    StopCoroutine(bodyReactionCoroutine);
+                }
+
+                targetAnimator.SetLayerWeight(layerIndex, 1f);
+                targetAnimator.CrossFade(kr.bodyReactionName, 0.2f, layerIndex);
+                bodyReactionCoroutine = StartCoroutine(
+                    ResetBodyReactionRoutine(bodyReactionDuration, layerIndex));
+            }
+        }
+
+        // 目線を合わせる (Weightを1にする)
+        if (targetRig != null)
+        {
+            if (lookAtCoroutine != null)
+            {
+                StopCoroutine(lookAtCoroutine);
+            }
+
+            SetRigTargetWeight(1f);
+            lookAtCoroutine = StartCoroutine(ResetLookAtRoutine());
+        }
+    }
+
+    private KeywordReaction FindExactMatch(string normalizedText)
+    {
+        foreach (KeywordReaction reaction in keywordReactions)
+        {
+            string keyword = NormalizeRecognitionText(reaction.keyword);
+            if (keyword.Length > 0 && normalizedText.Contains(keyword))
+            {
+                return reaction;
+            }
+        }
+
+        return null;
+    }
+
+    private KeywordReaction FindBestFuzzyMatch(string normalizedText, float threshold, out float bestSimilarity)
+    {
+        KeywordReaction bestReaction = null;
+        bestSimilarity = 0f;
+        float secondBestSimilarity = 0f;
+
+        foreach (KeywordReaction reaction in keywordReactions)
+        {
+            string keyword = NormalizeRecognitionText(reaction.keyword);
+            if (keyword.Length < fuzzyMinimumCharacters) continue;
+
+            float similarity = CalculateBestSubstringSimilarity(normalizedText, keyword);
+            if (similarity > bestSimilarity)
+            {
+                secondBestSimilarity = bestSimilarity;
+                bestSimilarity = similarity;
+                bestReaction = reaction;
+            }
+            else if (similarity > secondBestSimilarity)
+            {
+                secondBestSimilarity = similarity;
+            }
+        }
+
+        if (bestSimilarity < threshold || bestSimilarity - secondBestSimilarity < minimumBestMatchMargin)
+        {
+            bestSimilarity = 0f;
+            return null;
+        }
+
+        return bestReaction;
+    }
+
+    private static float CalculateBestSubstringSimilarity(string text, string keyword)
+    {
+        if (text.Length == 0 || keyword.Length == 0) return 0f;
+
+        float best = CalculateSimilarity(text, keyword);
+        int lengthDifferenceAllowance = Mathf.Max(1, Mathf.CeilToInt(keyword.Length * 0.35f));
+        int minLength = Mathf.Max(1, keyword.Length - lengthDifferenceAllowance);
+        int maxLength = Mathf.Min(text.Length, keyword.Length + lengthDifferenceAllowance);
+
+        for (int length = minLength; length <= maxLength; length++)
+        {
+            for (int start = 0; start + length <= text.Length; start++)
+            {
+                best = Mathf.Max(best, CalculateSimilarity(text.Substring(start, length), keyword));
+            }
+        }
+
+        return best;
+    }
+
+    private static float CalculateSimilarity(string left, string right)
+    {
+        int maxLength = Mathf.Max(left.Length, right.Length);
+        return maxLength == 0 ? 1f : 1f - (float)CalculateLevenshteinDistance(left, right) / maxLength;
+    }
+
+    private static int CalculateLevenshteinDistance(string left, string right)
+    {
+        int[] previous = new int[right.Length + 1];
+        int[] current = new int[right.Length + 1];
+
+        for (int j = 0; j <= right.Length; j++) previous[j] = j;
+
+        for (int i = 1; i <= left.Length; i++)
+        {
+            current[0] = i;
+            for (int j = 1; j <= right.Length; j++)
+            {
+                int substitutionCost = left[i - 1] == right[j - 1] ? 0 : 1;
+                current[j] = Mathf.Min(
+                    Mathf.Min(current[j - 1] + 1, previous[j] + 1),
+                    previous[j - 1] + substitutionCost);
+            }
+
+            int[] swap = previous;
+            previous = current;
+            current = swap;
+        }
+
+        return previous[right.Length];
+    }
+
+    private static string NormalizeRecognitionText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
+        string normalized = text.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
+        StringBuilder builder = new StringBuilder(normalized.Length);
+
+        foreach (char originalCharacter in normalized)
+        {
+            char character = originalCharacter;
+            if (character >= '\u30A1' && character <= '\u30F6')
+            {
+                character = (char)(character - '\u30A1' + '\u3041');
+            }
+
+            UnicodeCategory category = char.GetUnicodeCategory(character);
+            if (!char.IsWhiteSpace(character) &&
+                category != UnicodeCategory.Control &&
+                category != UnicodeCategory.Format &&
+                category != UnicodeCategory.ConnectorPunctuation &&
+                category != UnicodeCategory.DashPunctuation &&
+                category != UnicodeCategory.OpenPunctuation &&
+                category != UnicodeCategory.ClosePunctuation &&
+                category != UnicodeCategory.InitialQuotePunctuation &&
+                category != UnicodeCategory.FinalQuotePunctuation &&
+                category != UnicodeCategory.OtherPunctuation)
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private void ResetRecognitionMatchState()
+    {
+        hasHandledRecognitionThisPress = false;
+        stablePartialCandidate = null;
+        stablePartialSince = 0f;
+    }
+
+    private bool EvaluateCurrentVoicePoint()
+    {
+        Transform playerTransform = ResolvePlayerTransform();
+        Transform unityChanTransform =
+            unityChanTransformOverride != null
+                ? unityChanTransformOverride
+                : unityChanObj != null ? unityChanObj.transform : null;
+        PenlightGaugeController leftPenlight = ResolveLeftPenlight();
+
+        return voicePointEvaluator != null &&
+               voicePointEvaluator.Evaluate(playerTransform, unityChanTransform, leftPenlight);
+    }
+
+    private Transform ResolvePlayerTransform()
+    {
+        if (playerTransformOverride != null)
+        {
+            return playerTransformOverride;
+        }
+
+        Unity.XR.CoreUtils.XROrigin xrOrigin =
+            FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
+        if (xrOrigin != null && xrOrigin.Camera != null)
+        {
+            return xrOrigin.Camera.transform;
+        }
+
+        if (Camera.main != null)
+        {
+            return Camera.main.transform;
+        }
+
+        return null;
+    }
+
+    private PenlightGaugeController ResolveLeftPenlight()
+    {
+        if (leftPenlightOverride != null)
+        {
+            return leftPenlightOverride;
+        }
+
+        PenlightGaugeController[] controllers =
+            FindObjectsByType<PenlightGaugeController>(FindObjectsInactive.Include);
+        foreach (PenlightGaugeController controller in controllers)
+        {
+            if (controller == null) continue;
+
+            Saber saber = controller.saber != null
+                ? controller.saber
+                : controller.GetComponent<Saber>();
+            if (saber != null && saber.handType == Saber.HandType.Left)
+            {
+                leftPenlightOverride = controller;
+                return controller;
+            }
+        }
+
+        return null;
     }
 
     private IEnumerator ResetBodyReactionRoutine(float delay, int layerIndex)
     {
         yield return new WaitForSeconds(delay);
-        if (targetAnimator != null)
+
+        if (targetAnimator == null)
         {
-            targetAnimator.CrossFade("Empty", 0.5f, layerIndex);
+            bodyReactionCoroutine = null;
+            yield break;
         }
+
+        float startWeight = targetAnimator.GetLayerWeight(layerIndex);
+        float elapsed = 0f;
+        while (elapsed < bodyReturnBlendDuration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / bodyReturnBlendDuration);
+            float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
+            targetAnimator.SetLayerWeight(layerIndex, Mathf.Lerp(startWeight, 0f, easedProgress));
+            yield return null;
+        }
+
+        // Weightを厳密に0へ確定し、空のOverride Layerとダンスモーションの競合を止める。
+        targetAnimator.SetLayerWeight(layerIndex, 0f);
+        targetAnimator.Play("Empty", layerIndex, 0f);
+        bodyReactionCoroutine = null;
+    }
+
+    private IEnumerator ResetFaceReactionRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (faceUpdate != null)
+        {
+            faceUpdate.OnCallChangeFace("default@unitychan");
+        }
+        faceReactionCoroutine = null;
     }
 
     private IEnumerator ResetLookAtRoutine()
     {
         yield return new WaitForSeconds(lookAtDuration);
-        targetRigWeight = 0f;
+        SetRigTargetWeight(0f);
+        lookAtCoroutine = null;
+    }
+
+    private void SetRigTargetWeight(float weight)
+    {
+        targetRigWeight = Mathf.Clamp01(weight);
+        if (targetRig == null) return;
+
+        if (rigBlendCoroutine != null)
+        {
+            StopCoroutine(rigBlendCoroutine);
+        }
+
+        rigBlendCoroutine = StartCoroutine(BlendRigWeightRoutine(targetRigWeight));
+    }
+
+    private IEnumerator BlendRigWeightRoutine(float destination)
+    {
+        while (targetRig != null && !Mathf.Approximately(targetRig.weight, destination))
+        {
+            targetRig.weight = Mathf.MoveTowards(
+                targetRig.weight,
+                destination,
+                Mathf.Max(0.01f, rigBlendSpeed) * Time.deltaTime);
+            yield return null;
+        }
+
+        if (targetRig != null)
+        {
+            targetRig.weight = destination;
+        }
+        rigBlendCoroutine = null;
     }
 
     void OnDestroy()
@@ -492,12 +983,30 @@ public class TestSceneVoiceManager : MonoBehaviour
 public class AimTargetFollower : MonoBehaviour
 {
     public Camera targetCamera;
+    [Min(0f)] public float smoothTime = 0.08f;
+
+    private Vector3 velocity;
+    private bool initialized;
 
     void Update()
     {
         if (targetCamera != null)
         {
-            transform.position = targetCamera.transform.position;
+            Vector3 targetPosition = targetCamera.transform.position;
+            if (!initialized || smoothTime <= 0f)
+            {
+                transform.position = targetPosition;
+                initialized = true;
+                return;
+            }
+
+            transform.position = Vector3.SmoothDamp(
+                transform.position,
+                targetPosition,
+                ref velocity,
+                smoothTime,
+                Mathf.Infinity,
+                Time.deltaTime);
         }
     }
 }

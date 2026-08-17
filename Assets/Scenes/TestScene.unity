@@ -632,6 +632,85 @@ MonoBehaviour:
     bodyReactionName: 
   lookAtDuration: 3
   rigBlendSpeed: 5
+  faceReactionDuration: 2
+  enableUpperBodyLookAt: 1
+  spineLookWeight: 0.1
+  chestLookWeight: 0.15
+  upperChestLookWeight: 0.25
+  neckLookWeight: 0.2
+  headLookWeight: 0.3
+  upperBodyMaxLookAngle: 40
+  headMaxLookAngle: 70
+  voicePointEvaluator:
+    reactionThreshold: 60
+    distancePointCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 100
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 90
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 3
+        value: 70
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 5
+        value: 50
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 8
+        value: 20
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 10
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    normalMultiplier: 1
+    blueMultiplier: 1.2
+    yellowMultiplier: 1.4
+    pinkMultiplier: 2
+    enableDebugLog: 1
+  playerTransformOverride: {fileID: 0}
+  unityChanTransformOverride: {fileID: 0}
+  leftPenlightOverride: {fileID: 0}
 --- !u!4 &1878753596
 Transform:
   m_ObjectHideFlags: 0

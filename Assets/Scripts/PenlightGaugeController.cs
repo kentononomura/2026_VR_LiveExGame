@@ -4,6 +4,14 @@ using UnityEngine.XR;
 
 public class PenlightGaugeController : MonoBehaviour
 {
+    public enum PenlightColorState
+    {
+        Normal = 0,
+        Blue = 1,
+        Yellow = 2,
+        Pink = 3
+    }
+
     [Header("References")]
     [Tooltip("Saber script to read velocity from")]
     public Saber saber;
@@ -36,6 +44,13 @@ public class PenlightGaugeController : MonoBehaviour
 
     private float currentGauge = 0f;
     private int currentLevel = 0;
+
+    /// <summary>
+    /// 既存のゲージレベルを色状態として公開します。
+    /// 色状態を別途保持せず、既存のcurrentLevelを唯一の情報源として使用します。
+    /// </summary>
+    public PenlightColorState CurrentColorState =>
+        (PenlightColorState)Mathf.Clamp(currentLevel, 0, 3);
     
     // パフォーマンスのため、定期的にモデルの色を再適用するためのフラグ
     // （Saber.csのStartによるモデル生成の遅延対応）

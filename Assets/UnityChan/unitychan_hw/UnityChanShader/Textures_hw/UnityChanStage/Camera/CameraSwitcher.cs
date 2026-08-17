@@ -18,8 +18,7 @@ public class CameraSwitcher : MonoBehaviour
     void Start()
     {
         // Target information.
-        target = GameObject.Find(targetName).transform;
-        followPoint = target.position;
+        TryResolveTarget();
 
         // Initialize DOF fx.
 //        var dofFx = GetComponentInChildren<DepthOfFieldScatter>();
@@ -31,6 +30,10 @@ public class CameraSwitcher : MonoBehaviour
 
     void Update()
     {
+        // The target can be destroyed during a scene transition while this camera rig remains alive.
+        // Wait safely and reconnect if an object with the configured name appears again.
+        if (!TryResolveTarget()) return;
+
         // Update the follow point with the exponential easing function.
         var param = Mathf.Exp(-rotationSpeed * Time.deltaTime);
         followPoint = Vector3.Lerp(target.position, followPoint, param);
@@ -43,7 +46,7 @@ public class CameraSwitcher : MonoBehaviour
     public void ChangePosition(Transform destination, bool forceStable = false)
     {
         // Do nothing if disabled.
-        if (!enabled) return;
+        if (!enabled || destination == null || !TryResolveTarget()) return;
 
         // Move to the point.
         transform.position = destination.position;
@@ -56,23 +59,34 @@ public class CameraSwitcher : MonoBehaviour
 
         // Update the FOV depending on the distance to the target.
         var dist = Vector3.Distance(target.position, transform.position);
-        GetComponentInChildren<Camera>().fieldOfView = fovCurve.Evaluate(dist);
+        Camera childCamera = GetComponentInChildren<Camera>();
+        if (childCamera != null)
+            childCamera.fieldOfView = fovCurve.Evaluate(dist);
     }
 
     // Choose a point other than the current.
     Transform ChooseAnotherPoint(Transform current)
     {
-        while (true)
+        if (!TryResolveTarget() || points == null || points.Length < 2) return current;
+
+        // Use a bounded search so invalid point settings cannot freeze the main thread.
+        for (int attempt = 0; attempt < points.Length * 2; attempt++)
         {
             var next = points[Random.Range(0, points.Length)];
+            if (next == null || next == current) continue;
+
             var dist = Vector3.Distance(next.position, target.position);
-            if (next != current && dist > minDistance) return next;
+            if (dist > minDistance) return next;
         }
+
+        return current;
     }
 
     // Auto-changer.
     IEnumerator AutoChange()
     {
+        if (points == null || points.Length == 0) yield break;
+
         for (var current = points[0]; true; current = ChooseAnotherPoint(current))
         {
             ChangePosition(current);
@@ -88,5 +102,18 @@ public class CameraSwitcher : MonoBehaviour
     public void StopAutoChange()
     {
         StopCoroutine("AutoChange");
+    }
+
+    bool TryResolveTarget()
+    {
+        if (target != null) return true;
+        if (string.IsNullOrEmpty(targetName)) return false;
+
+        GameObject targetObject = GameObject.Find(targetName);
+        if (targetObject == null) return false;
+
+        target = targetObject.transform;
+        followPoint = target.position;
+        return true;
     }
 }

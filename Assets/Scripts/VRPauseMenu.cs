@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Collections;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -11,7 +12,13 @@ public class VRPauseMenu : MonoBehaviour
     private static VRPauseMenu instance;
     private GameObject menuUI;
     private bool isPaused = false;
+    private bool isPersistentSettingsMenu = false;
     private float previousTimeScale = 1f;
+
+    private const string TestSceneName = "TestScene";
+    private const string ResultSceneName = "VRPhotoResultTest";
+    private const string TitleSceneName = "TitleScene";
+    private const string ResultMenuAnchorName = "TitleReturnCanvas";
 
 #if ENABLE_INPUT_SYSTEM
     private InputAction pauseAction;
@@ -67,6 +74,10 @@ public class VRPauseMenu : MonoBehaviour
         
         // Clean up any manually placed scene duplicates immediately
         CleanSceneDuplicates();
+
+        // RuntimeInitializeOnLoadMethod runs after the first scene is loaded, so configure
+        // the current scene here as well (important when Play Mode starts in the result scene).
+        StartCoroutine(ConfigureMenuForScene(SceneManager.GetActiveScene().name));
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -75,10 +86,62 @@ public class VRPauseMenu : MonoBehaviour
         Time.timeScale = 1f;
         AudioListener.pause = false;
         isPaused = false;
+        isPersistentSettingsMenu = false;
+
+        if (menuUI != null)
+        {
+            menuUI.SetActive(false);
+        }
+
+        ToggleRayInteractors(false);
+        TemporarilyIgnoreHeldObjects(false);
 
         // Clean up duplicates on every scene load
         CleanSceneDuplicates();
         CleanDuplicateEventSystems();
+
+        // Wait until the XR Origin and its camera have finished their scene-load setup.
+        StartCoroutine(ConfigureMenuForScene(scene.name));
+    }
+
+    private IEnumerator ConfigureMenuForScene(string sceneName)
+    {
+        yield return null;
+
+        string activeSceneName = SceneManager.GetActiveScene().name;
+        bool isResultScene = sceneName == ResultSceneName && activeSceneName == ResultSceneName;
+        bool isTitleScene = sceneName == TitleSceneName && activeSceneName == TitleSceneName;
+        if (!isResultScene && !isTitleScene)
+        {
+            yield break;
+        }
+
+        EnsureEventSystem();
+        isPersistentSettingsMenu = true;
+
+        if (menuUI == null)
+        {
+            yield break;
+        }
+
+        SetMenuLayerToUI();
+        if (!PositionMenuAtSceneAnchor(activeSceneName) && isResultScene)
+        {
+            PositionResultMenuAtTitleReturnCanvas();
+        }
+        else if (!isResultScene && FindSceneMenuAnchor(activeSceneName) == null)
+        {
+            PositionTitleMenuInWorld();
+        }
+
+        SyncVolumeSlider();
+        SetResumeButtonVisible(false);
+        SetTitleButtonVisible(isResultScene);
+        menuUI.SetActive(true);
+
+        ToggleRayInteractors(true, false);
+        FindRays();
+        Debug.Log($"[VRPauseMenu] Settings menu is now permanently visible in {activeSceneName}.");
     }
 
     private void TemporarilyIgnoreHeldObjects(bool ignore)
@@ -208,7 +271,13 @@ public class VRPauseMenu : MonoBehaviour
     {
         // Only allow pausing in TestScene and ResultScene (VRPhotoResultTest)
         string currentScene = SceneManager.GetActiveScene().name;
-        if (currentScene != "TestScene" && currentScene != "VRPhotoResultTest")
+        if (currentScene != TestSceneName && currentScene != ResultSceneName)
+        {
+            return;
+        }
+
+        // The result menu is a permanent world-space settings panel, not a pause toggle.
+        if (currentScene == ResultSceneName)
         {
             return;
         }
@@ -301,11 +370,13 @@ public class VRPauseMenu : MonoBehaviour
         return Camera.main;
     }
 
-    private void ToggleRayInteractors(bool forceEnable)
+    private void ToggleRayInteractors(bool forceEnable, bool uiOnly = true)
     {
         if (forceEnable)
         {
             rayStates.Clear();
+            rayMasks.Clear();
+            rayDistances.Clear();
 
             var rays = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>(FindObjectsInactive.Include);
             foreach (var ray in rays)
@@ -319,7 +390,8 @@ public class VRPauseMenu : MonoBehaviour
                 rayDistances[ray] = ray.maxRaycastDistance;
 
                 ray.maxRaycastDistance = 100f;
-                ray.raycastMask = LayerMask.GetMask("UI"); // Ignore all physics layers, only raycast the UI layer
+                int uiMask = LayerMask.GetMask("UI");
+                ray.raycastMask = uiOnly ? uiMask : ray.raycastMask | uiMask;
 
                 var lineVisual = ray.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals.XRInteractorLineVisual>();
                 if (lineVisual != null) lineVisual.enabled = true;
@@ -379,34 +451,11 @@ public class VRPauseMenu : MonoBehaviour
 
         if (menuUI != null)
         {
-            // Set the menu UI and all its children to the UI layer (Layer 5)
-            int uiLayer = LayerMask.NameToLayer("UI");
-            foreach (Transform t in menuUI.GetComponentsInChildren<Transform>(true))
-            {
-                t.gameObject.layer = uiLayer;
-            }
-            menuUI.layer = uiLayer;
-
-            Camera cam = GetVRCamera();
-            if (cam != null)
-            {
-                Canvas canvas = menuUI.GetComponent<Canvas>();
-                if (canvas != null)
-                {
-                    canvas.worldCamera = cam;
-                }
-                // Spawn the menu at 1.0m using the true VR eye camera
-                menuUI.transform.position = cam.transform.position + cam.transform.forward * 1.0f;
-                menuUI.transform.rotation = Quaternion.LookRotation(menuUI.transform.position - cam.transform.position);
-                menuUI.transform.localScale = new Vector3(0.0012f, 0.0012f, 0.0012f);
-            }
-
-            // Sync volume slider before showing
-            Slider volumeSlider = menuUI.transform.Find("Panel/Slider").GetComponent<Slider>();
-            if (volumeSlider != null)
-            {
-                volumeSlider.value = AudioListener.volume;
-            }
+            SetMenuLayerToUI();
+            PositionMenuInWorld();
+            SyncVolumeSlider();
+            SetResumeButtonVisible(true);
+            SetTitleButtonVisible(true);
 
             menuUI.SetActive(true);
             Debug.Log("[VRPauseMenu] Pause menu set to active.");
@@ -423,7 +472,7 @@ public class VRPauseMenu : MonoBehaviour
         Time.timeScale = previousTimeScale > 0f ? previousTimeScale : 1f;
         AudioListener.pause = false;
 
-        if (menuUI != null)
+        if (menuUI != null && !isPersistentSettingsMenu)
         {
             menuUI.SetActive(false);
             Debug.Log("[VRPauseMenu] Pause menu set to inactive.");
@@ -435,7 +484,7 @@ public class VRPauseMenu : MonoBehaviour
 
     private void Update()
     {
-        if (!isPaused) return;
+        if (!isPaused && !isPersistentSettingsMenu) return;
 
 #if ENABLE_INPUT_SYSTEM
         // Handle trigger clicks programmatically to bypass any broken native UI Select setups
@@ -532,6 +581,12 @@ public class VRPauseMenu : MonoBehaviour
         {
             titleBtn.onClick.AddListener(() =>
             {
+                if (SceneManager.GetActiveScene().name == ResultSceneName)
+                {
+                    // Preserve the behavior of the replaced TitleReturnCanvas button.
+                    PhotoGalleryManager.ClearPhotos();
+                }
+
                 ResumeGame();
                 if (VRScreenFader.Instance != null)
                 {
@@ -560,5 +615,204 @@ public class VRPauseMenu : MonoBehaviour
         }
 
         menuUI.SetActive(false);
+    }
+
+    private void SetMenuLayerToUI()
+    {
+        if (menuUI == null) return;
+
+        int uiLayer = LayerMask.NameToLayer("UI");
+        foreach (Transform child in menuUI.GetComponentsInChildren<Transform>(true))
+        {
+            child.gameObject.layer = uiLayer;
+        }
+        menuUI.layer = uiLayer;
+    }
+
+    private void PositionMenuInWorld()
+    {
+        if (menuUI == null) return;
+
+        Camera cam = GetVRCamera();
+        if (cam == null)
+        {
+            Debug.LogWarning("[VRPauseMenu] VR camera was not found; menu placement was skipped.");
+            return;
+        }
+
+        Canvas canvas = menuUI.GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.worldCamera = cam;
+        }
+
+        // This is assigned once when entering the scene, so the menu stays in world space.
+        menuUI.transform.position =
+            cam.transform.position + cam.transform.forward * 1.25f + Vector3.down * 0.12f;
+        menuUI.transform.rotation =
+            Quaternion.LookRotation(menuUI.transform.position - cam.transform.position);
+        menuUI.transform.localScale = new Vector3(0.0012f, 0.0012f, 0.0012f);
+    }
+
+    private void PositionResultMenuAtTitleReturnCanvas()
+    {
+        if (menuUI == null) return;
+
+        Canvas anchorCanvas = null;
+        Canvas[] sceneCanvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include);
+        foreach (Canvas candidate in sceneCanvases)
+        {
+            if (candidate != null &&
+                candidate.gameObject != menuUI &&
+                candidate.gameObject.name == ResultMenuAnchorName &&
+                candidate.gameObject.scene.name == ResultSceneName)
+            {
+                anchorCanvas = candidate;
+                break;
+            }
+        }
+
+        if (anchorCanvas == null)
+        {
+            Debug.LogWarning(
+                "[VRPauseMenu] TitleReturnCanvas was not found. Using the camera-relative fallback position.");
+            PositionMenuInWorld();
+            return;
+        }
+
+        Camera cam = GetVRCamera();
+        Canvas menuCanvas = menuUI.GetComponent<Canvas>();
+        if (menuCanvas != null)
+        {
+            menuCanvas.renderMode = RenderMode.WorldSpace;
+            menuCanvas.worldCamera = cam;
+        }
+
+        // Copy the existing scene-authored world placement, then hide the duplicated UI.
+        menuUI.transform.position = anchorCanvas.transform.position;
+        menuUI.transform.rotation = anchorCanvas.transform.rotation;
+        menuUI.transform.localScale = new Vector3(0.0012f, 0.0012f, 0.0012f);
+        anchorCanvas.gameObject.SetActive(false);
+
+        Debug.Log("[VRPauseMenu] Result menu was placed at TitleReturnCanvas and the old canvas was hidden.");
+    }
+
+    private void PositionTitleMenuInWorld()
+    {
+        if (menuUI == null) return;
+
+        Camera cam = GetVRCamera();
+        if (cam == null)
+        {
+            Debug.LogWarning("[VRPauseMenu] VR camera was not found; title menu placement was skipped.");
+            return;
+        }
+
+        Canvas canvas = menuUI.GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.worldCamera = cam;
+        }
+
+        // Place once to the player's left so the existing title/start presentation remains clear.
+        menuUI.transform.position =
+            cam.transform.position +
+            cam.transform.forward * 1.35f -
+            cam.transform.right * 0.72f +
+            Vector3.down * 0.08f;
+        menuUI.transform.rotation =
+            Quaternion.LookRotation(menuUI.transform.position - cam.transform.position);
+        menuUI.transform.localScale = new Vector3(0.0012f, 0.0012f, 0.0012f);
+    }
+
+    private VRMenuPlacementAnchor FindSceneMenuAnchor(string sceneName)
+    {
+        VRMenuPlacementAnchor[] anchors =
+            FindObjectsByType<VRMenuPlacementAnchor>(FindObjectsInactive.Include);
+        foreach (VRMenuPlacementAnchor anchor in anchors)
+        {
+            if (anchor != null && anchor.gameObject.scene.name == sceneName)
+            {
+                return anchor;
+            }
+        }
+
+        return null;
+    }
+
+    private bool PositionMenuAtSceneAnchor(string sceneName)
+    {
+        if (menuUI == null) return false;
+
+        VRMenuPlacementAnchor anchor = FindSceneMenuAnchor(sceneName);
+        if (anchor == null) return false;
+
+        Camera cam = GetVRCamera();
+        Canvas canvas = menuUI.GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.worldCamera = cam;
+        }
+
+        menuUI.transform.position = anchor.transform.position;
+        menuUI.transform.rotation = anchor.transform.rotation;
+        float scale = anchor.RuntimeMenuScale;
+        menuUI.transform.localScale = new Vector3(scale, scale, scale);
+        anchor.ApplyTo(menuUI);
+
+        if (sceneName == ResultSceneName)
+        {
+            Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include);
+            foreach (Canvas sceneCanvas in canvases)
+            {
+                if (sceneCanvas != null &&
+                    sceneCanvas.gameObject.name == ResultMenuAnchorName &&
+                    sceneCanvas.gameObject.scene.name == ResultSceneName)
+                {
+                    sceneCanvas.gameObject.SetActive(false);
+                    break;
+                }
+            }
+        }
+
+        Debug.Log($"[VRPauseMenu] Menu positioned at scene anchor: {anchor.name}");
+        return true;
+    }
+
+    private void SyncVolumeSlider()
+    {
+        if (menuUI == null) return;
+
+        Transform sliderTransform = menuUI.transform.Find("Panel/Slider");
+        Slider volumeSlider = sliderTransform != null ? sliderTransform.GetComponent<Slider>() : null;
+        if (volumeSlider != null)
+        {
+            volumeSlider.value = AudioListener.volume;
+        }
+    }
+
+    private void SetResumeButtonVisible(bool visible)
+    {
+        if (menuUI == null) return;
+
+        Transform resumeButton = menuUI.transform.Find("Panel/ResumeBtn");
+        if (resumeButton != null)
+        {
+            resumeButton.gameObject.SetActive(visible);
+        }
+    }
+
+    private void SetTitleButtonVisible(bool visible)
+    {
+        if (menuUI == null) return;
+
+        Transform titleButton = menuUI.transform.Find("Panel/TitleBtn");
+        if (titleButton != null)
+        {
+            titleButton.gameObject.SetActive(visible);
+        }
     }
 }
