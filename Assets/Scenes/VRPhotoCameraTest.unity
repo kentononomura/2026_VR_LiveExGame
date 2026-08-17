@@ -1328,6 +1328,7 @@ MonoBehaviour:
   viewfinderCamera: {fileID: 586567049}
   viewfinderTexture: {fileID: 8400000, guid: dcb4f4f2b405d404985096e88fd4a8b1, type: 2}
   screenRenderer: {fileID: 858866286}
+  landscapeTiltThreshold: 45
   shootAction:
     m_UseReference: 0
     m_Action:
@@ -1348,6 +1349,12 @@ MonoBehaviour:
         m_Flags: 0
       m_Flags: 0
     m_Reference: {fileID: 0}
+  maxZoomRatio: 1.5
+  zoomSpeed: 1
+  flipZoomUI: 0
+  sliderWidth: 40
+  sliderXOffset: -20
+  zoomTextFontSize: 60
   audioSource: {fileID: 609930689}
   shutterSound: {fileID: 8300000, guid: 0e9220bb4834d654fa71974246899c25, type: 3}
   flashMaterial: {fileID: 2100000, guid: a1dde97089ee9fd44b21cc031ed48de4, type: 2}
