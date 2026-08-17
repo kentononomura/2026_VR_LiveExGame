@@ -32,6 +32,9 @@ public class TitleVoiceManager : MonoBehaviour
     [Tooltip("VR用: 右手のトリガーボタンで音声認識を行います")]
     public InputAction pushToTalkAction = new InputAction("PushToTalk", InputActionType.Button, "<XRController>{RightHand}/triggerPressed");
     
+    [Tooltip("VR用: 左手のトリガーボタンで音声認識を行います")]
+    public InputAction pushToTalkLeftAction = new InputAction("PushToTalkLeft", InputActionType.Button, "<XRController>{LeftHand}/triggerPressed");
+    
     [Tooltip("デバッグ用: 左手のXボタンで即座に遷移します")]
     public InputAction debugTransitionAction = new InputAction("DebugTransition", InputActionType.Button, "<XRController>{LeftHand}/primaryButton");
 #endif
@@ -51,6 +54,8 @@ public class TitleVoiceManager : MonoBehaviour
     private bool isModelLoaded = false;
     private bool isTransitioning = false; // 二重ロード防止
     private bool isShuttingDown = false;
+    private bool wasRightTriggerPressed = false;
+    private bool wasLeftPrimaryPressed = false;
 
     private const int SampleRate = 16000;
 
@@ -70,6 +75,7 @@ public class TitleVoiceManager : MonoBehaviour
     {
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.Enable();
+        pushToTalkLeftAction.Enable();
         debugTransitionAction.Enable();
 #endif
 
@@ -138,7 +144,22 @@ public class TitleVoiceManager : MonoBehaviour
             return;
         }
 
+        // デフォルトマイク
         microphoneDevice = Microphone.devices[0]; 
+
+        // VRデバイス（Oculus / Meta Quest等）のマイクを自動検出して優先
+        foreach (var device in Microphone.devices)
+        {
+            string lowerName = device.ToLower();
+            if (lowerName.Contains("oculus") || lowerName.Contains("meta quest") || lowerName.Contains("virtual audio"))
+            {
+                microphoneDevice = device;
+                Debug.Log($"[Vosk] VRマイクを自動検出しました: {device}");
+                break;
+            }
+        }
+
+        // customMicrophoneName が指定されている場合は最優先
         if (!string.IsNullOrEmpty(customMicrophoneName))
         {
             foreach (var device in Microphone.devices)
@@ -174,6 +195,20 @@ public class TitleVoiceManager : MonoBehaviour
             isDebugTriggered = true;
         }
 #endif
+        // フォールバック: 左手プライマリボタンから直接取得 (Quest 2/Quest 3 互換用)
+        var leftHandDevices = new List<UnityEngine.XR.InputDevice>();
+        UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(UnityEngine.XR.InputDeviceCharacteristics.Left | UnityEngine.XR.InputDeviceCharacteristics.Controller, leftHandDevices);
+        if (leftHandDevices.Count > 0)
+        {
+            if (leftHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.primaryButton, out bool isXrPrimaryPressed))
+            {
+                if (isXrPrimaryPressed && !wasLeftPrimaryPressed)
+                {
+                    isDebugTriggered = true;
+                }
+                wasLeftPrimaryPressed = isXrPrimaryPressed;
+            }
+        }
 
         if (isDebugTriggered)
         {
@@ -182,18 +217,62 @@ public class TitleVoiceManager : MonoBehaviour
             return;
         }
 
-        bool isPressedDown = Input.GetKeyDown(pushToTalkKey);
-        bool isHolding = Input.GetKey(pushToTalkKey);
-        bool isReleased = Input.GetKeyUp(pushToTalkKey);
+        bool isTriggerPressed = Input.GetKey(pushToTalkKey);
 
 #if ENABLE_INPUT_SYSTEM
         if (pushToTalkAction.enabled)
         {
-            isPressedDown |= pushToTalkAction.WasPressedThisFrame();
-            isHolding |= pushToTalkAction.IsPressed();
-            isReleased |= pushToTalkAction.WasReleasedThisFrame();
+            isTriggerPressed |= pushToTalkAction.IsPressed();
+        }
+        if (pushToTalkLeftAction.enabled)
+        {
+            isTriggerPressed |= pushToTalkLeftAction.IsPressed();
         }
 #endif
+
+        // フォールバック: 右手トリガーから直接取得 (Quest 2/Quest 3 互換用)
+        var rightHandDevices = new List<UnityEngine.XR.InputDevice>();
+        UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(UnityEngine.XR.InputDeviceCharacteristics.Right | UnityEngine.XR.InputDeviceCharacteristics.Controller, rightHandDevices);
+        if (rightHandDevices.Count > 0)
+        {
+            if (rightHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool isXrTriggerPressed))
+            {
+                isTriggerPressed |= isXrTriggerPressed;
+            }
+        }
+
+        // フォールバック: 左手トリガーから直接取得 (Quest 2/Quest 3 互換用)
+        var leftHandDevices2 = new List<UnityEngine.XR.InputDevice>();
+        UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(UnityEngine.XR.InputDeviceCharacteristics.Left | UnityEngine.XR.InputDeviceCharacteristics.Controller, leftHandDevices2);
+        if (leftHandDevices2.Count > 0)
+        {
+            if (leftHandDevices2[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool isXrTriggerPressed))
+            {
+                isTriggerPressed |= isXrTriggerPressed;
+            }
+        }
+
+        // 状態変化（押し下げ・押し上げ）を確実に判定するロジック
+        bool isPressedDown = false;
+        bool isReleased = false;
+        bool isHolding = isTriggerPressed;
+
+        if (isTriggerPressed)
+        {
+            if (!wasRightTriggerPressed)
+            {
+                isPressedDown = true;
+                wasRightTriggerPressed = true;
+            }
+        }
+        else
+        {
+            if (wasRightTriggerPressed)
+            {
+                isReleased = true;
+                wasRightTriggerPressed = false;
+            }
+        }
 
         // メインスレッドでの結果受け取りと処理
         while (resultQueue.TryDequeue(out string result))
@@ -230,6 +309,18 @@ public class TitleVoiceManager : MonoBehaviour
         // ボタンを押している間だけ音声データをVoskに送る（本編と共通の仕様）
         if (isHolding)
         {
+            // 音圧チェック（無音・ミュート検知）
+            float maxVal = 0f;
+            foreach (var s in samples)
+            {
+                float absVal = Mathf.Abs(s);
+                if (absVal > maxVal) maxVal = absVal;
+            }
+            if (maxVal < 0.001f) // ほぼ完全な無音
+            {
+                Debug.LogWarning("[Vosk] 🎤 (Title) 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+            }
+
             short[] shortSamples = new short[samples.Length];
             for (int i = 0; i < samples.Length; i++)
             {
@@ -294,6 +385,7 @@ public class TitleVoiceManager : MonoBehaviour
     {
 #if ENABLE_INPUT_SYSTEM
         pushToTalkAction.Disable();
+        pushToTalkLeftAction.Disable();
         debugTransitionAction.Disable();
 #endif
         isShuttingDown = true;

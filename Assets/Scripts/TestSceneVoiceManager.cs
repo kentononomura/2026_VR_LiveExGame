@@ -23,7 +23,7 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Header("Input Settings")]
 #if ENABLE_INPUT_SYSTEM
     [Tooltip("左手トリガーで音声認識を開始します")]
-    public InputAction pushToTalkAction = new InputAction("PushToTalk", InputActionType.Value, "<XRController>{LeftHand}/trigger");
+    public InputAction pushToTalkAction = new InputAction("PushToTalk", InputActionType.Button, "<XRController>{LeftHand}/triggerPressed");
 #endif
 
     [Header("Keywords & Reactions")]
@@ -75,26 +75,49 @@ public class TestSceneVoiceManager : MonoBehaviour
         StartCoroutine(HideRightSaberRoutine());
 
 #if ENABLE_INPUT_SYSTEM
-        pushToTalkAction.expectedControlType = "Axis";
+        pushToTalkAction.expectedControlType = "Button";
         pushToTalkAction.Enable();
 #endif
+
+        // シーン遷移直後の高負荷を避けるため、数秒待ってから非同期でモデルロードを開始する
+        StartCoroutine(DelayedModelLoadRoutine());
+    }
+
+    private IEnumerator DelayedModelLoadRoutine()
+    {
+        // シーン遷移直後のアセット初期化スパイクを逃がすため、2.0秒間待機
+        yield return new WaitForSeconds(2.0f);
+
 
         string modelPath = Path.Combine(Application.streamingAssetsPath, modelFolderName);
         if (Directory.Exists(modelPath))
         {
+            Debug.Log($"[Vosk] TestScene 用のモデルロード非同期タスクを起動します: {modelPath}");
             Task.Run(() =>
             {
-                model = new Model(modelPath);
-                recognizer = new VoskRecognizer(model, SampleRate);
-                recognizer.SetMaxAlternatives(0);
-                recognizer.SetWords(true);
-                
-                workerThread = new Thread(VoskWorkerLoop);
-                workerThread.IsBackground = true;
-                workerThread.Start();
-                
-                isModelLoaded = true;
+                try
+                {
+                    model = new Model(modelPath);
+                    recognizer = new VoskRecognizer(model, SampleRate);
+                    recognizer.SetMaxAlternatives(0);
+                    recognizer.SetWords(true);
+                    
+                    workerThread = new Thread(VoskWorkerLoop);
+                    workerThread.IsBackground = true;
+                    workerThread.Start();
+                    
+                    isModelLoaded = true;
+                    Debug.Log("[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。");
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[Vosk] モデル初期化例外: {ex.Message}\n{ex.StackTrace}");
+                }
             });
+        }
+        else
+        {
+            Debug.LogError($"[Vosk] StreamingAssets 内のモデルフォルダが見つかりません: {modelPath}");
         }
     }
 
@@ -142,7 +165,7 @@ public class TestSceneVoiceManager : MonoBehaviour
                 {
                     if (child.name == "SaberVisual" || child.name == "HitboxVisual" || child.name == "PenlightMeterCanvas")
                     {
-                        Destroy(child.gameObject);
+                        child.gameObject.SetActive(false);
                     }
                 }
             }
@@ -153,7 +176,22 @@ public class TestSceneVoiceManager : MonoBehaviour
     {
         if (Microphone.devices.Length == 0) return;
 
+        // デフォルトマイク
         microphoneDevice = Microphone.devices[0]; 
+
+        // VRデバイス（Oculus / Meta Quest等）のマイクを自動検出して優先
+        foreach (var device in Microphone.devices)
+        {
+            string lowerName = device.ToLower();
+            if (lowerName.Contains("oculus") || lowerName.Contains("meta quest") || lowerName.Contains("virtual audio"))
+            {
+                microphoneDevice = device;
+                Debug.Log($"[Vosk] VRマイクを自動検出しました: {device}");
+                break;
+            }
+        }
+
+        // customMicrophoneName が指定されている場合は最優先
         if (!string.IsNullOrEmpty(customMicrophoneName))
         {
             foreach (var device in Microphone.devices)
@@ -186,6 +224,66 @@ public class TestSceneVoiceManager : MonoBehaviour
             ProcessRecognitionResult(result);
         }
 
+        // PTT（プッシュ・トゥ・トーク）入力判定を先に実行（早期リターンの前へ！）
+        bool isHolding = false;
+        bool isTriggerPressed = false;
+
+#if ENABLE_INPUT_SYSTEM
+        if (pushToTalkAction.enabled)
+        {
+            isTriggerPressed = pushToTalkAction.IsPressed();
+        }
+#endif
+
+        // フォールバック: UnityEngine.XR.InputDeviceから直接トリガーボタン状態を取得 (Quest 2/Quest 3 互換性向上)
+        var leftHandDevices = new List<UnityEngine.XR.InputDevice>();
+        UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(UnityEngine.XR.InputDeviceCharacteristics.Left | UnityEngine.XR.InputDeviceCharacteristics.Controller, leftHandDevices);
+        if (leftHandDevices.Count > 0)
+        {
+            if (leftHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out bool xrTriggerPressed))
+            {
+                isTriggerPressed |= xrTriggerPressed;
+            }
+        }
+
+        // デバッグ用のトリガー押し込み値（アナログ）
+        float debugTriggerValue = 0f;
+        if (leftHandDevices.Count > 0)
+        {
+            leftHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out debugTriggerValue);
+        }
+
+        if (isTriggerPressed)
+        {
+            if (!isLeftTriggerDown)
+            {
+                isLeftTriggerDown = true;
+                if (isListening && recognizer != null)
+                {
+                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
+                    Debug.Log($"<color=#00FF00>[Vosk] 🎤 左手トリガー検知：音声入力の受付を開始しました (TriggerValue: {debugTriggerValue:F2})</color>");
+                }
+                else
+                {
+                    Debug.LogWarning($"<color=#FFAA00>[Vosk] 🎤 左手トリガーを検知しましたが、音声認識の準備が整っていません（モデルロード状態: {isModelLoaded}, マイク録音状態: {isListening}）</color>");
+                }
+            }
+            isHolding = true;
+        }
+        else
+        {
+            if (isLeftTriggerDown)
+            {
+                isLeftTriggerDown = false;
+                if (isListening && recognizer != null)
+                {
+                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
+                    Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
+                }
+            }
+        }
+
+        // ここでマイク/モデルロードのチェックと起動を行う
         if (isModelLoaded && !isListening)
         {
             StartMicrophone();
@@ -193,34 +291,6 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
 
         if (!isListening || recognizer == null || audioClip == null) return;
-
-        bool isHolding = false;
-
-#if ENABLE_INPUT_SYSTEM
-        if (pushToTalkAction.enabled)
-        {
-            float triggerValue = pushToTalkAction.ReadValue<float>();
-            if (triggerValue >= 0.8f)
-            {
-                if (!isLeftTriggerDown)
-                {
-                    isLeftTriggerDown = true;
-                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
-                    Debug.Log($"<color=#00FF00>[Vosk] 🎤 左手トリガー検知：音声入力の受付を開始しました</color>");
-                }
-                isHolding = true;
-            }
-            else if (triggerValue < 0.2f)
-            {
-                if (isLeftTriggerDown)
-                {
-                    isLeftTriggerDown = false;
-                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
-                    Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
-                }
-            }
-        }
-#endif
 
         int currentPosition = Microphone.GetPosition(microphoneDevice);
         if (currentPosition < 0 || lastSamplePosition == currentPosition) return;
@@ -234,6 +304,18 @@ public class TestSceneVoiceManager : MonoBehaviour
 
         if (isHolding)
         {
+            // 音圧チェック（無音・ミュート検知）
+            float maxVal = 0f;
+            foreach (var s in samples)
+            {
+                float absVal = Mathf.Abs(s);
+                if (absVal > maxVal) maxVal = absVal;
+            }
+            if (maxVal < 0.001f) // ほぼ完全な無音
+            {
+                Debug.LogWarning("[Vosk] 🎤 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+            }
+
             short[] shortSamples = new short[samples.Length];
             for (int i = 0; i < samples.Length; i++)
             {

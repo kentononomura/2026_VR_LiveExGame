@@ -34,7 +34,7 @@ public class VRCameraLookAt : MonoBehaviour
         mainCam = Camera.main;
         if (mainCam == null)
         {
-            var allCams = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var allCams = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
             foreach (var c in allCams)
             {
                 if (c.gameObject.name.Contains("Main Camera") || c.gameObject.name.Contains("VR"))

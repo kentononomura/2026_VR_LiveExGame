@@ -93,28 +93,47 @@ public class VoiceReactionManager : MonoBehaviour
             unityChanReaction = FindAnyObjectByType<UnityChanReaction>();
         }
 
+        // シーン遷移直後の高負荷を避けるため、数秒待ってから非同期でモデルロードを開始する
+        StartCoroutine(DelayedModelLoadRoutine());
+    }
+
+    private IEnumerator DelayedModelLoadRoutine()
+    {
+        // シーン遷移直後のアセット初期化スパイクを逃がすため、2.0秒間待機
+        yield return new WaitForSeconds(2.0f);
+
+
         // モデルの初期化
         string modelPath = Path.Combine(Application.streamingAssetsPath, modelFolderName);
         if (!Directory.Exists(modelPath))
         {
             Debug.LogError($"[Vosk] モデルが見つかりません: {modelPath}。StreamingAssets内に配置してください。");
-            return;
+            yield break;
         }
 
+        Debug.Log($"[Vosk] モデルロード非同期タスクを起動します: {modelPath}");
         // バックグラウンドでVoskのモデルをロード（重いため）
         Task.Run(() =>
         {
-            model = new Model(modelPath);
-            recognizer = new VoskRecognizer(model, SampleRate);
-            recognizer.SetMaxAlternatives(0);
-            recognizer.SetWords(true);
-            
-            // ロード完了後、ワーカースレッドを起動
-            workerThread = new Thread(VoskWorkerLoop);
-            workerThread.IsBackground = true;
-            workerThread.Start();
-            
-            isModelLoaded = true;
+            try
+            {
+                model = new Model(modelPath);
+                recognizer = new VoskRecognizer(model, SampleRate);
+                recognizer.SetMaxAlternatives(0);
+                recognizer.SetWords(true);
+                
+                // ロード完了後、ワーカースレッドを起動
+                workerThread = new Thread(VoskWorkerLoop);
+                workerThread.IsBackground = true;
+                workerThread.Start();
+                
+                isModelLoaded = true;
+                Debug.Log("[Vosk] モデルロードおよび音声認識スレッドが正常に起動しました。");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Vosk] モデル初期化例外: {ex.Message}\n{ex.StackTrace}");
+            }
         });
     }
 
@@ -158,7 +177,19 @@ public class VoiceReactionManager : MonoBehaviour
         // デフォルトマイクをセット
         microphoneDevice = Microphone.devices[0]; 
 
-        // カスタムマイク名が指定されている場合は検索する
+        // VRデバイス（Oculus / Meta Quest等）のマイクを自動検出して優先
+        foreach (var device in Microphone.devices)
+        {
+            string lowerName = device.ToLower();
+            if (lowerName.Contains("oculus") || lowerName.Contains("meta quest") || lowerName.Contains("virtual audio"))
+            {
+                microphoneDevice = device;
+                Debug.Log($"[Vosk] VRマイクを自動検出しました: {device}");
+                break;
+            }
+        }
+
+        // カスタムマイク名が指定されている場合は最優先で検索する
         if (!string.IsNullOrEmpty(customMicrophoneName))
         {
             bool found = false;
@@ -173,7 +204,7 @@ public class VoiceReactionManager : MonoBehaviour
             }
             if (!found)
             {
-                Debug.LogWarning($"[Vosk] 指定されたマイク '{customMicrophoneName}' が見つかりませんでした。デフォルトのマイクを使用します。");
+                Debug.LogWarning($"[Vosk] 指定されたマイク '{customMicrophoneName}' が見つかりませんでした。デフォルトまたは検出されたマイクを使用します。");
             }
         }
 

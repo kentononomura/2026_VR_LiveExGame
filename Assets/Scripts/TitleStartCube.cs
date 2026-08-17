@@ -31,7 +31,7 @@ public class TitleStartCube : MonoBehaviour
             else
             {
                 // フォールバック（直ロード）
-                SceneManager.LoadScene(targetSceneName);
+                SceneManager.LoadSceneAsync(targetSceneName);
             }
         }
     }

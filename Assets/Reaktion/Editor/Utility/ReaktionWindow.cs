@@ -84,7 +84,7 @@ public class ReaktionWindow : EditorWindow
         }
 
         // Update the cache.
-        cachedReaktors = FindObjectsByType<Reaktor> (FindObjectsSortMode.None);
+        cachedReaktors = FindObjectsByType<Reaktor>(FindObjectsInactive.Exclude);
         System.Array.Sort (cachedReaktors, CompareReaktor);
         activeReaktorCount = Reaktor.ActiveInstanceCount;
     }

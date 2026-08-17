@@ -59,8 +59,7 @@ public class StageMaterialUpgrader : EditorWindow
             {
                 // In modern Unity, change the material import mode to standard description-based
                 // which resolves the "MaterialLocation.External is obsolete" warning.
-                if (importer.materialImportMode == ModelImporterMaterialImportMode.None || 
-                    importer.materialLocation == ModelImporterMaterialLocation.External)
+                if (importer.materialImportMode != ModelImporterMaterialImportMode.ImportViaMaterialDescription)
                 {
                     importer.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
                     importer.SaveAndReimport();

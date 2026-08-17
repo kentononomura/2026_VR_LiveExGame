@@ -78,6 +78,7 @@ public class VRPauseMenu : MonoBehaviour
 
         // Clean up duplicates on every scene load
         CleanSceneDuplicates();
+        CleanDuplicateEventSystems();
     }
 
     private void TemporarilyIgnoreHeldObjects(bool ignore)
@@ -144,7 +145,7 @@ public class VRPauseMenu : MonoBehaviour
     private void CleanSceneDuplicates()
     {
         // Find all canvases in the scene (including inactive ones)
-        var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include);
         foreach (var c in canvases)
         {
             GameObject go = c.gameObject;
@@ -153,6 +154,37 @@ public class VRPauseMenu : MonoBehaviour
             {
                 Destroy(go);
                 Debug.Log("[VRPauseMenu] Cleaned up duplicate pause UI: " + go.name);
+            }
+        }
+    }
+
+    private void CleanDuplicateEventSystems()
+    {
+        var allEventSystems = FindObjectsByType<EventSystem>(FindObjectsInactive.Include);
+        if (allEventSystems.Length > 1)
+        {
+            Debug.Log($"[VRPauseMenu] Found {allEventSystems.Length} EventSystems in the scene. Cleaning up duplicates...");
+            EventSystem primaryES = null;
+            foreach (var es in allEventSystems)
+            {
+                if (es != null && es.gameObject.activeInHierarchy)
+                {
+                    primaryES = es;
+                    break;
+                }
+            }
+            if (primaryES == null && allEventSystems.Length > 0)
+            {
+                primaryES = allEventSystems[0];
+            }
+
+            foreach (var es in allEventSystems)
+            {
+                if (es != null && es != primaryES)
+                {
+                    Destroy(es.gameObject);
+                    Debug.Log($"[VRPauseMenu] Destroyed duplicate EventSystem: {es.name}");
+                }
             }
         }
     }
@@ -201,6 +233,8 @@ public class VRPauseMenu : MonoBehaviour
 
     private void EnsureEventSystem()
     {
+        CleanDuplicateEventSystems();
+
         EventSystem es = FindAnyObjectByType<EventSystem>();
         if (es == null)
         {
@@ -229,7 +263,7 @@ public class VRPauseMenu : MonoBehaviour
     {
         leftRay = null;
         rightRay = null;
-        var rays = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var rays = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>(FindObjectsInactive.Include);
         foreach (var r in rays)
         {
             // Check self name, parent name, and grandparent name to see if it's Left/Right hand
@@ -255,7 +289,7 @@ public class VRPauseMenu : MonoBehaviour
         }
         
         // Fallback: Find MainCamera that isn't the smartphone camera
-        Camera[] cams = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Camera[] cams = FindObjectsByType<Camera>(FindObjectsInactive.Include);
         foreach (var c in cams)
         {
             if (c.CompareTag("MainCamera") && c.name != "ViewfinderCamera" && !c.name.Contains("Phone"))
@@ -273,7 +307,7 @@ public class VRPauseMenu : MonoBehaviour
         {
             rayStates.Clear();
 
-            var rays = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var rays = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>(FindObjectsInactive.Include);
             foreach (var ray in rays)
             {
                 rayStates[ray] = ray.enabled;
@@ -503,12 +537,12 @@ public class VRPauseMenu : MonoBehaviour
                 {
                     VRScreenFader.Instance.FadeOut(1.0f, () =>
                     {
-                        SceneManager.LoadScene("TitleScene");
+                        SceneManager.LoadSceneAsync("TitleScene");
                     });
                 }
                 else
                 {
-                    SceneManager.LoadScene("TitleScene");
+                    SceneManager.LoadSceneAsync("TitleScene");
                 }
             });
         }

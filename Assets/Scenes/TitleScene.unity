@@ -535,7 +535,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TitleVoiceManager
   targetSceneName: TestScene
   modelFolderName: vosk-model-small-ja-0.22
-  customMicrophoneName: 
+  customMicrophoneName: Yamaha AG03MK2
   showRecognitionLog: 1
   pushToTalkAction:
     m_Name: PushToTalk
@@ -552,6 +552,23 @@ MonoBehaviour:
       m_Processors: 
       m_Groups: 
       m_Action: PushToTalk
+      m_Flags: 0
+    m_Flags: 0
+  pushToTalkLeftAction:
+    m_Name: PushToTalkLeft
+    m_Type: 1
+    m_ExpectedControlType: 
+    m_Id: 9916dfb6-c81c-4d7b-b276-d12768c51aff
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: a7b75ec7-2069-49b9-8bd8-6eae1e2429aa
+      m_Path: <XRController>{LeftHand}/triggerPressed
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: PushToTalkLeft
       m_Flags: 0
     m_Flags: 0
   debugTransitionAction:

@@ -129,7 +129,6 @@ GameObject:
   m_Component:
   - component: {fileID: 97136306}
   - component: {fileID: 97136305}
-  - component: {fileID: 97136307}
   - component: {fileID: 97136309}
   - component: {fileID: 97136308}
   m_Layer: 0
@@ -168,18 +167,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &97136307
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 97136304}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fbed71e02da0ee04d83b4aa72ae418d6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AudioDebugger
 --- !u!114 &97136308
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -581,7 +568,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestSceneVoiceManager
   modelFolderName: vosk-model-small-ja-0.22
-  customMicrophoneName: 
+  customMicrophoneName: Yamaha AG03MK2
   showRecognitionLog: 1
   pushToTalkAction:
     m_Name: PushToTalk

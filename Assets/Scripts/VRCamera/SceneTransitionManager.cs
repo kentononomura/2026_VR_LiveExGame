@@ -12,12 +12,12 @@ public class SceneTransitionManager : MonoBehaviour
         {
             VRScreenFader.Instance.FadeOut(0.5f, () =>
             {
-                SceneManager.LoadScene(resultSceneName);
+                SceneManager.LoadSceneAsync(resultSceneName);
             });
         }
         else
         {
-            SceneManager.LoadScene(resultSceneName);
+            SceneManager.LoadSceneAsync(resultSceneName);
         }
     }
 
@@ -28,13 +28,13 @@ public class SceneTransitionManager : MonoBehaviour
             VRScreenFader.Instance.FadeOut(0.5f, () =>
             {
                 PhotoGalleryManager.ClearPhotos();
-                SceneManager.LoadScene(playSceneName);
+                SceneManager.LoadSceneAsync(playSceneName);
             });
         }
         else
         {
             PhotoGalleryManager.ClearPhotos();
-            SceneManager.LoadScene(playSceneName);
+            SceneManager.LoadSceneAsync(playSceneName);
         }
     }
 

@@ -14,7 +14,7 @@ public static class PhotoEvaluator
 
         // Find the target (UnityChan)
         Animator targetAnim = null;
-        var animators = Object.FindObjectsByType<Animator>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var animators = Object.FindObjectsByType<Animator>(FindObjectsInactive.Exclude);
         foreach (var a in animators)
         {
             if (a.isHuman && a.gameObject.name.ToLower().Contains("unitychan"))

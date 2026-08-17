@@ -62,10 +62,37 @@ public class VRScreenFader : MonoBehaviour
 
     private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
     {
-        // シーンロード時に自動で画面を明るくする
+        // 新しいシーンがロードされたら、古いフェード状態を完全にリセットして強制的にフェードインを開始する
+        StopAllCoroutines();
+        isFading = false;
+        
+        if (Camera.main != null)
+        {
+            UnityEngine.Debug.Log($"[VRScreenFader] シーンロード直後のカメラ座標 - Scene: {scene.name}, Position: {Camera.main.transform.position}, LocalPosition: {Camera.main.transform.localPosition}");
+        }
+
+        // Oculus Link/Meta Quest特有のシーン遷移時トラッキングフリーズ（画面が張り付く、床にめり込む）対策：
+        // シーンロード直後にトラッキングポーズをリセットし、カメラの再取得を強制する
+        StartCoroutine(ResetTrackingRoutine());
+        
         if (gameObject.activeInHierarchy)
         {
-            FadeIn(1.0f, null);
+            // 確実にフェードインを走らせるため直接コルーチンを起動
+            StartCoroutine(FadeRoutine(1f, 0f, 1.0f, null));
+        }
+    }
+
+    private IEnumerator ResetTrackingRoutine()
+    {
+        // XR Rigが完全に初期化されるのを数フレーム待つ
+        yield return null;
+        yield return null;
+
+        // カメラの最終座標をログ出力（デバッグ用）
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            UnityEngine.Debug.Log($"[VRScreenFader] シーンロード後のカメラ座標 - Position: {mainCam.transform.position}, LocalPosition: {mainCam.transform.localPosition}, Rotation: {mainCam.transform.rotation.eulerAngles}");
         }
     }
 
@@ -102,9 +129,18 @@ public class VRScreenFader : MonoBehaviour
     private void Update()
     {
         // シーン遷移などでメインカメラが変わった場合に自動追従する
-        if (fadeCanvas != null && fadeCanvas.worldCamera == null)
+        if (fadeCanvas != null)
         {
-            fadeCanvas.worldCamera = Camera.main;
+            Camera currentMain = Camera.main;
+            // worldCameraが未設定、または非アクティブになった古いカメラを指している、あるいは現在のCamera.mainと異なる場合は更新する
+            if (fadeCanvas.worldCamera != currentMain || (fadeCanvas.worldCamera != null && !fadeCanvas.worldCamera.gameObject.activeInHierarchy))
+            {
+                fadeCanvas.worldCamera = currentMain;
+                if (currentMain != null)
+                {
+                    fadeCanvas.planeDistance = 0.1f; // カメラの目の前に正確に配置
+                }
+            }
         }
     }
 

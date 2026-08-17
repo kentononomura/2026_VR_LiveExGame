@@ -157,8 +157,28 @@ public class VRTitleRaycasterSetup : MonoBehaviour
 
     private void SetupEventSystem()
     {
-        EventSystem eventSystem = FindAnyObjectByType<EventSystem>();
-        if (eventSystem == null)
+        var allEventSystems = FindObjectsByType<EventSystem>(FindObjectsInactive.Include);
+        EventSystem eventSystem = null;
+        if (allEventSystems.Length > 0)
+        {
+            eventSystem = allEventSystems[0];
+            foreach (var es in allEventSystems)
+            {
+                if (es != null && es.gameObject.activeInHierarchy)
+                {
+                    eventSystem = es;
+                    break;
+                }
+            }
+            foreach (var es in allEventSystems)
+            {
+                if (es != null && es != eventSystem)
+                {
+                    Destroy(es.gameObject);
+                }
+            }
+        }
+        else
         {
             GameObject esObj = new GameObject("EventSystem");
             eventSystem = esObj.AddComponent<EventSystem>();
