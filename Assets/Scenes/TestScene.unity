@@ -591,7 +591,7 @@ MonoBehaviour:
   - keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u3053\u3063\u3061\u5411\u3044\u3066"
+  - keyword: "\u3053\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
   - keyword: "\u3053\u3063\u3061"
@@ -614,24 +614,57 @@ MonoBehaviour:
     bodyReactionName: 
   - keyword: "\u624B\u632F\u3063\u3066"
     reactionName: smile2@unitychan
-    bodyReactionName: Wave
+    bodyReactionName: Waving
+  - keyword: "\u624B\u3092\u632F\u3063\u3066"
+    reactionName: smile2@unitychan
+    bodyReactionName: Waving
+  - keyword: "\u3066\u632F\u3063\u3066"
+    reactionName: smile2@unitychan
+    bodyReactionName: Waving
   - keyword: "\u632F\u3063\u3066"
     reactionName: smile2@unitychan
-    bodyReactionName: Wave
+    bodyReactionName: Waving
   - keyword: "\u3075\u3063\u3066"
     reactionName: smile2@unitychan
-    bodyReactionName: Wave
+    bodyReactionName: Waving
   - keyword: "\u304B\u308F\u3044\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
   - keyword: "\u6CB3\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
+  - keyword: "\u53EF\u611B\u3044"
+    reactionName: smile3@unitychan
+    bodyReactionName: Kiss
+  - keyword: "\u304B\u308F\u3044"
+    reactionName: smile3@unitychan
+    bodyReactionName: Kiss
+  - keyword: "\u5DDD\u4E95"
+    reactionName: smile3@unitychan
+    bodyReactionName: Kiss
   - keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan
     bodyReactionName: 
+  - keyword: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
+    reactionName: default@unitychan
+    bodyReactionName: Waving
+  - keyword: "\u30E6\u30CB\u30C6\u30A3\u30FC\u3061\u3083\u3093"
+    reactionName: default@unitychan
+    bodyReactionName: Waving
+  - keyword: "\u30E6\u30CB\u3061\u3083\u3093"
+    reactionName: default@unitychan
+    bodyReactionName: Waving
+  enableFuzzyMatching: 1
+  partialSimilarityThreshold: 0.8
+  finalSimilarityThreshold: 0.7
+  partialStableDuration: 0.2
+  fuzzyMinimumCharacters: 3
+  minimumBestMatchMargin: 0.05
   lookAtDuration: 3
   rigBlendSpeed: 5
+  bodyReactionDuration: 2.5
+  bodyReturnBlendDuration: 0.5
+  aimTargetSmoothTime: 0.08
   faceReactionDuration: 2
   enableUpperBodyLookAt: 1
   spineLookWeight: 0.1
