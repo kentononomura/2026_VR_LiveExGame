@@ -762,17 +762,6 @@ MonoBehaviour:
   labelFontSize: 40
   sliderPosition: {x: 0, y: 110}
   sliderSize: {x: 900, y: 60}
-  showMicrophoneIndicatorOnTitle: 1
-  microphoneIndicatorLabel: "\u30DE\u30A4\u30AF\u5165\u529B"
-  microphoneIndicatorPosition: {x: 0, y: -45}
-  microphoneIndicatorSize: {x: 900, y: 90}
-  microphoneIndicatorFontSize: 34
-  microphoneDetectionThreshold: 0.08
-  microphoneWaitingColor: {r: 1, g: 0.65, b: 0.15, a: 1}
-  microphoneReadyColor: {r: 0.2, g: 0.9, b: 0.45, a: 1}
-  microphoneDetectingColor: {r: 0.15, g: 1, b: 0.35, a: 1}
-  microphoneBarBackgroundColor: {r: 1, g: 1, b: 1, a: 0.18}
-  microphonePanelColor: {r: 0, g: 0, b: 0, a: 0.42}
   resumeButtonPosition: {x: 0, y: -71}
   titleButtonPosition: {x: 0, y: -228}
   quitButtonPosition: {x: 0, y: -400}
@@ -2095,6 +2084,8 @@ PrefabInstance:
     - {fileID: 100096, guid: c2455b87c898eb646a195c31546b1481, type: 3}
     - {fileID: 100136, guid: c2455b87c898eb646a195c31546b1481, type: 3}
     - {fileID: 100222, guid: c2455b87c898eb646a195c31546b1481, type: 3}
+    - {fileID: 100214, guid: c2455b87c898eb646a195c31546b1481, type: 3}
+    - {fileID: 100146, guid: c2455b87c898eb646a195c31546b1481, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c2455b87c898eb646a195c31546b1481, type: 3}

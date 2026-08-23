@@ -51,9 +51,34 @@ public class XROriginPersistence : MonoBehaviour
 
         instance = this;
         DontDestroyOnLoad(gameObject);
+        ConfigureFloorTrackingOrigin();
         Debug.Log($"[XROriginPersistence] '{gameObject.name}' を永続化しました。シーン遷移後もトラッキングを維持します。");
 
         SceneManager.sceneLoaded += OnSceneLoadedInstance;
+    }
+
+    /// <summary>
+    /// Quest実機とQuest LinkでHMD・コントローラーの高さ基準を床へ統一する。
+    /// Device基準用の固定身長オフセットと実機の床基準が混在することを防ぐ。
+    /// </summary>
+    private void ConfigureFloorTrackingOrigin()
+    {
+        var xrOrigin = GetComponent<Unity.XR.CoreUtils.XROrigin>();
+        if (xrOrigin == null) return;
+
+        xrOrigin.RequestedTrackingOriginMode =
+            Unity.XR.CoreUtils.XROrigin.TrackingOriginMode.Floor;
+        xrOrigin.CameraYOffset = 0f;
+
+        if (xrOrigin.CameraFloorOffsetObject != null)
+        {
+            Transform offsetTransform = xrOrigin.CameraFloorOffsetObject.transform;
+            Vector3 localPosition = offsetTransform.localPosition;
+            localPosition.y = 0f;
+            offsetTransform.localPosition = localPosition;
+        }
+
+        Debug.Log("[XROriginPersistence] Tracking OriginをFloorへ統一し、固定Camera Y Offsetを無効化しました。");
     }
 
     private void OnDestroy()
@@ -74,7 +99,7 @@ public class XROriginPersistence : MonoBehaviour
         bool foundDuplicate = false;
 
         // 新しいシーンに含まれる重複 XROrigin を検索
-        var allXROrigins = FindObjectsByType<Unity.XR.CoreUtils.XROrigin>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var allXROrigins = FindObjectsByType<Unity.XR.CoreUtils.XROrigin>(FindObjectsInactive.Include);
         foreach (var xrOrigin in allXROrigins)
         {
             if (xrOrigin.gameObject == gameObject) continue;
@@ -106,7 +131,7 @@ public class XROriginPersistence : MonoBehaviour
         Camera mainCam = Camera.main;
         if (mainCam == null) return;
 
-        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include);
         foreach (var canvas in canvases)
         {
             if (canvas.renderMode == RenderMode.WorldSpace)

@@ -1,0 +1,16 @@
+README|507
+am/final.mdl|16061359
+conf/mfcc.conf|135
+conf/model.conf|299
+graph/Gr.fst|30893295
+graph/HCLr.fst|37684266
+graph/disambig_tid.int|754
+graph/phones.txt|2535
+graph/phones/word_boundary.int|1927
+graph/words.txt|4273659
+ivector/final.dubm|168048
+ivector/final.ie|9927287
+ivector/final.mat|44975
+ivector/global_cmvn.stats|1082
+ivector/online_cmvn.conf|0
+ivector/splice.conf|37

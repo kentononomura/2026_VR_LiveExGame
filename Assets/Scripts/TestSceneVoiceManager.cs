@@ -134,8 +134,10 @@ public class TestSceneVoiceManager : MonoBehaviour
     private int lastSamplePosition = 0;
     private bool isListening = false;
     private bool isModelLoaded = false;
+    private float nextMicrophoneStartAttemptTime;
     private bool isShuttingDown = false;
     private const int SampleRate = 16000;
+    private readonly List<UnityEngine.XR.InputDevice> leftHandDevices = new List<UnityEngine.XR.InputDevice>(1);
 
     private bool isLeftTriggerDown = false;
     private bool hasHandledRecognitionThisPress;
@@ -155,6 +157,7 @@ public class TestSceneVoiceManager : MonoBehaviour
     {
         public VoskCommandType type;
         public byte[] audioData;
+        public int audioLength;
     }
     
     private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
@@ -188,36 +191,49 @@ public class TestSceneVoiceManager : MonoBehaviour
         yield return new WaitForSeconds(2.0f);
 
 
-        string modelPath = Path.Combine(Application.streamingAssetsPath, modelFolderName);
-        if (Directory.Exists(modelPath))
+        string modelPath = null;
+        string modelPrepareError = null;
+        yield return VoskModelPathResolver.Prepare(
+            modelFolderName,
+            path => modelPath = path,
+            error => modelPrepareError = error);
+
+        if (!string.IsNullOrEmpty(modelPrepareError) || string.IsNullOrEmpty(modelPath))
         {
-            Debug.Log($"[Vosk] TestScene 用のモデルロード非同期タスクを起動します: {modelPath}");
-            Task.Run(() =>
+            Debug.LogError($"[Vosk] TestScene 用モデルを準備できませんでした: {modelPrepareError}");
+            yield break;
+        }
+
+        Debug.Log($"[Vosk] TestScene 用のモデルロード非同期タスクを起動します: {modelPath}");
+        Task.Run(() =>
+        {
+            try
             {
-                try
+                model = VoskModelCache.GetOrLoad(modelPath);
+                recognizer = new VoskRecognizer(model, SampleRate);
+                recognizer.SetMaxAlternatives(0);
+                // キーワード判定では単語ごとの時刻情報を使わないため、JSON生成負荷を抑える。
+                recognizer.SetWords(false);
+
+                if (isShuttingDown)
                 {
-                    model = new Model(modelPath);
-                    recognizer = new VoskRecognizer(model, SampleRate);
-                    recognizer.SetMaxAlternatives(0);
-                    recognizer.SetWords(true);
-                    
-                    workerThread = new Thread(VoskWorkerLoop);
-                    workerThread.IsBackground = true;
-                    workerThread.Start();
-                    
-                    isModelLoaded = true;
-                    Debug.Log("[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。");
+                    recognizer.Dispose();
+                    recognizer = null;
+                    return;
                 }
-                catch (System.Exception ex)
-                {
-                    Debug.LogError($"[Vosk] モデル初期化例外: {ex.Message}\n{ex.StackTrace}");
-                }
-            });
-        }
-        else
-        {
-            Debug.LogError($"[Vosk] StreamingAssets 内のモデルフォルダが見つかりません: {modelPath}");
-        }
+
+                workerThread = new Thread(VoskWorkerLoop);
+                workerThread.IsBackground = true;
+                workerThread.Start();
+
+                isModelLoaded = true;
+                Debug.Log("[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[Vosk] モデル初期化例外: {ex.Message}\n{ex.StackTrace}");
+            }
+        });
     }
 
     private void VoskWorkerLoop()
@@ -232,9 +248,16 @@ public class TestSceneVoiceManager : MonoBehaviour
                 }
                 else if (cmd.type == VoskCommandType.ProcessAudio && cmd.audioData != null)
                 {
-                    if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioData.Length))
+                    try
                     {
-                        resultQueue.Enqueue(recognizer.Result());
+                        if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioLength))
+                        {
+                            resultQueue.Enqueue(recognizer.Result());
+                        }
+                    }
+                    finally
+                    {
+                        VoskPcmUtility.Return(cmd.audioData);
                     }
                 }
                 else if (cmd.type == VoskCommandType.FinalResult)
@@ -273,16 +296,22 @@ public class TestSceneVoiceManager : MonoBehaviour
 
     private void StartMicrophone()
     {
-        if (Microphone.devices.Length == 0) return;
+        if (!VRMicrophonePermission.EnsureGranted()) return;
+        if (Time.unscaledTime < nextMicrophoneStartAttemptTime) return;
+        nextMicrophoneStartAttemptTime = Time.unscaledTime + 2f;
 
-        // デフォルトマイク
-        microphoneDevice = Microphone.devices[0]; 
+        string[] availableDevices = Microphone.devices;
+
+        // Questではデバイス名一覧が空でも、null指定でシステム既定マイクを開始できる。
+        microphoneDevice = availableDevices.Length > 0 ? availableDevices[0] : null;
 
         // VRデバイス（Oculus / Meta Quest等）のマイクを自動検出して優先
-        foreach (var device in Microphone.devices)
+        foreach (var device in availableDevices)
         {
             string lowerName = device.ToLower();
-            if (lowerName.Contains("oculus") || lowerName.Contains("meta quest") || lowerName.Contains("virtual audio"))
+            if (lowerName.Contains("oculus") || lowerName.Contains("meta quest") ||
+                lowerName.Contains("quest") || lowerName.Contains("android") ||
+                lowerName.Contains("virtual audio"))
             {
                 microphoneDevice = device;
                 Debug.Log($"[Vosk] VRマイクを自動検出しました: {device}");
@@ -293,9 +322,9 @@ public class TestSceneVoiceManager : MonoBehaviour
         // customMicrophoneName が指定されている場合は最優先
         if (!string.IsNullOrEmpty(customMicrophoneName))
         {
-            foreach (var device in Microphone.devices)
+            foreach (var device in availableDevices)
             {
-                if (device.Contains(customMicrophoneName))
+                if (device.IndexOf(customMicrophoneName, System.StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     microphoneDevice = device;
                     break;
@@ -303,8 +332,20 @@ public class TestSceneVoiceManager : MonoBehaviour
             }
         }
 
-        audioClip = Microphone.Start(microphoneDevice, true, 1, SampleRate);
-        isListening = true;
+        audioClip = Microphone.Start(microphoneDevice, true, VoskPcmUtility.MicrophoneBufferSeconds, SampleRate);
+        isListening = audioClip != null;
+
+        if (isListening)
+        {
+            string selectedName = string.IsNullOrEmpty(microphoneDevice)
+                ? "Quest/Android システム既定マイク"
+                : microphoneDevice;
+            Debug.Log($"[Vosk] TestScene 音声認識マイクを開始しました: {selectedName}");
+        }
+        else
+        {
+            Debug.LogError("[Vosk] マイクの開始に失敗しました。アプリのマイク権限を確認してください。");
+        }
     }
 
     void Update()
@@ -329,7 +370,7 @@ public class TestSceneVoiceManager : MonoBehaviour
 #endif
 
         // フォールバック: UnityEngine.XR.InputDeviceから直接トリガーボタン状態を取得 (Quest 2/Quest 3 互換性向上)
-        var leftHandDevices = new List<UnityEngine.XR.InputDevice>();
+        leftHandDevices.Clear();
         UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(UnityEngine.XR.InputDeviceCharacteristics.Left | UnityEngine.XR.InputDeviceCharacteristics.Controller, leftHandDevices);
         if (leftHandDevices.Count > 0)
         {
@@ -346,6 +387,7 @@ public class TestSceneVoiceManager : MonoBehaviour
             leftHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out debugTriggerValue);
         }
 
+        bool shouldFinalize = false;
         if (isTriggerPressed)
         {
             if (!isLeftTriggerDown)
@@ -371,8 +413,8 @@ public class TestSceneVoiceManager : MonoBehaviour
                 isLeftTriggerDown = false;
                 if (isListening && recognizer != null)
                 {
-                    commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
-                    Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
+                    // 最新のマイクデータを送信した後で FinalResult を要求する。
+                    shouldFinalize = true;
                 }
             }
         }
@@ -387,38 +429,43 @@ public class TestSceneVoiceManager : MonoBehaviour
         if (!isListening || recognizer == null || audioClip == null) return;
 
         int currentPosition = Microphone.GetPosition(microphoneDevice);
-        if (currentPosition < 0 || lastSamplePosition == currentPosition) return;
-
-        int sampleCount = currentPosition - lastSamplePosition;
-        if (sampleCount < 0) sampleCount += audioClip.samples;
-
-        float[] samples = new float[sampleCount];
-        audioClip.GetData(samples, lastSamplePosition);
-        lastSamplePosition = currentPosition;
-
-        if (isHolding)
+        if (currentPosition >= 0 && lastSamplePosition != currentPosition)
         {
-            // 音圧チェック（無音・ミュート検知）
-            float maxVal = 0f;
-            foreach (var s in samples)
-            {
-                float absVal = Mathf.Abs(s);
-                if (absVal > maxVal) maxVal = absVal;
-            }
-            if (maxVal < 0.001f) // ほぼ完全な無音
-            {
-                Debug.LogWarning("[Vosk] 🎤 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
-            }
+            int sampleCount = currentPosition - lastSamplePosition;
+            if (sampleCount < 0) sampleCount += audioClip.samples;
 
-            short[] shortSamples = new short[samples.Length];
-            for (int i = 0; i < samples.Length; i++)
-            {
-                shortSamples[i] = (short)(samples[i] * short.MaxValue);
-            }
-            byte[] byteData = new byte[shortSamples.Length * 2];
-            System.Buffer.BlockCopy(shortSamples, 0, byteData, 0, byteData.Length);
+            float[] samples = new float[sampleCount];
+            audioClip.GetData(samples, lastSamplePosition);
+            lastSamplePosition = currentPosition;
 
-            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.ProcessAudio, audioData = byteData });
+            // 離したフレームの語尾も、確定要求より先に必ずVoskへ渡す。
+            if (isHolding || shouldFinalize)
+            {
+                float maxVal = 0f;
+                foreach (var s in samples)
+                {
+                    float absVal = Mathf.Abs(s);
+                    if (absVal > maxVal) maxVal = absVal;
+                }
+                if (maxVal < 0.001f)
+                {
+                    Debug.LogWarning("[Vosk] 🎤 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+                }
+
+                byte[] byteData = VoskPcmUtility.RentAndConvert(samples, out int byteCount);
+                commandQueue.Enqueue(new VoskCommand
+                {
+                    type = VoskCommandType.ProcessAudio,
+                    audioData = byteData,
+                    audioLength = byteCount
+                });
+            }
+        }
+
+        if (shouldFinalize)
+        {
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
+            Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
         }
     }
 
@@ -976,7 +1023,12 @@ public class TestSceneVoiceManager : MonoBehaviour
 
         if (isListening) Microphone.End(microphoneDevice);
         if (recognizer != null) recognizer.Dispose();
-        if (model != null) model.Dispose();
+        // Model は VoskModelCache がシーン間で共有し、アプリ終了時に破棄する。
+
+        while (commandQueue.TryDequeue(out VoskCommand pendingCommand))
+        {
+            VoskPcmUtility.Return(pendingCommand.audioData);
+        }
     }
 }
 

@@ -49,6 +49,21 @@ public sealed class VRMenuPlacementAnchor : MonoBehaviour
     [SerializeField] private Vector2 sliderPosition = Vector2.zero;
     [SerializeField] private Vector2 sliderSize = new Vector2(400f, 40f);
 
+    [Header("Title Microphone Indicator")]
+    [Tooltip("Titleシーンの常設メニューへマイク入力インジケーターを表示します。")]
+    [SerializeField] private bool showMicrophoneIndicatorOnTitle = true;
+
+    [SerializeField] private string microphoneIndicatorLabel = "マイク入力";
+    [SerializeField] private Vector2 microphoneIndicatorPosition = new Vector2(0f, -45f);
+    [SerializeField] private Vector2 microphoneIndicatorSize = new Vector2(900f, 90f);
+    [Min(1)] [SerializeField] private int microphoneIndicatorFontSize = 34;
+    [Range(0f, 1f)] [SerializeField] private float microphoneDetectionThreshold = 0.08f;
+    [SerializeField] private Color microphoneWaitingColor = new Color(1f, 0.65f, 0.15f, 1f);
+    [SerializeField] private Color microphoneReadyColor = new Color(0.2f, 0.9f, 0.45f, 1f);
+    [SerializeField] private Color microphoneDetectingColor = new Color(0.15f, 1f, 0.35f, 1f);
+    [SerializeField] private Color microphoneBarBackgroundColor = new Color(1f, 1f, 1f, 0.18f);
+    [SerializeField] private Color microphonePanelColor = new Color(0f, 0f, 0f, 0.42f);
+
     [Header("Button Layout")]
     [SerializeField] private Vector2 resumeButtonPosition = new Vector2(0f, -100f);
     [SerializeField] private Vector2 titleButtonPosition = new Vector2(0f, -180f);
@@ -57,6 +72,7 @@ public sealed class VRMenuPlacementAnchor : MonoBehaviour
     [Min(1)] [SerializeField] private int buttonFontSize = 40;
 
     public float RuntimeMenuScale => runtimeMenuScale;
+    public bool ShowMicrophoneIndicatorOnTitle => showMicrophoneIndicatorOnTitle;
 
     public void ApplyTo(GameObject menuRoot)
     {
@@ -71,9 +87,31 @@ public sealed class VRMenuPlacementAnchor : MonoBehaviour
         ApplyText(panel.Find("TitleText"), windowTitle, titleFontSize, titlePosition, titleSize);
         ApplyText(panel.Find("VolumeLabel"), volumeLabel, labelFontSize, volumeLabelPosition, volumeLabelSize);
         ApplyRect(panel.Find("Slider"), sliderPosition, sliderSize);
+        ApplyMicrophoneIndicator(panel.Find("MicrophoneIndicator"));
         ApplyButton(panel.Find("ResumeBtn"), resumeButtonText, resumeButtonPosition);
         ApplyButton(panel.Find("TitleBtn"), titleButtonText, titleButtonPosition);
         ApplyButton(panel.Find("QuitBtn"), quitButtonText, quitButtonPosition);
+    }
+
+    private void ApplyMicrophoneIndicator(Transform indicatorTransform)
+    {
+        ApplyRect(indicatorTransform, microphoneIndicatorPosition, microphoneIndicatorSize);
+        if (indicatorTransform == null) return;
+
+        TitleMicrophoneIndicator indicator =
+            indicatorTransform.GetComponent<TitleMicrophoneIndicator>();
+        if (indicator == null) return;
+
+        indicator.Configure(
+            microphoneIndicatorLabel,
+            menuFont,
+            microphoneIndicatorFontSize,
+            microphoneWaitingColor,
+            microphoneReadyColor,
+            microphoneDetectingColor,
+            microphoneBarBackgroundColor,
+            microphonePanelColor,
+            microphoneDetectionThreshold);
     }
 
     private void ApplyButton(Transform buttonTransform, string text, Vector2 position)
@@ -138,6 +176,13 @@ public sealed class VRMenuPlacementAnchor : MonoBehaviour
             new Color(0.95f, 0.8f, 0.2f, 1f));
         DrawPreviewRect(volumeLabelPosition, volumeLabelSize, new Color(0.5f, 1f, 0.5f, 1f));
         DrawPreviewRect(sliderPosition, sliderSize, new Color(0.5f, 1f, 0.5f, 1f));
+        if (showMicrophoneIndicatorOnTitle)
+        {
+            DrawPreviewRect(
+                microphoneIndicatorPosition,
+                microphoneIndicatorSize,
+                microphoneReadyColor);
+        }
         DrawPreviewRect(resumeButtonPosition, buttonSize, new Color(1f, 0.55f, 0.2f, 1f));
         DrawPreviewRect(titleButtonPosition, buttonSize, new Color(1f, 0.55f, 0.2f, 1f));
         DrawPreviewRect(quitButtonPosition, buttonSize, new Color(1f, 0.55f, 0.2f, 1f));

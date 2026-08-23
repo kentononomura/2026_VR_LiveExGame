@@ -81,9 +81,11 @@ public class VRPhotoViewer : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float scoreLabelOutlineWidth = 0.15f;
 
+#if UNITY_EDITOR
     [Header("Scene Preview")]
     [Tooltip("SceneビューでいいねUIのレイアウト枠を表示します。")]
     [SerializeField] private bool showScoreLayoutPreview = true;
+#endif
 
     [Header("Score Count-Up Sound")]
     [Tooltip("写真評価スコアのカウントアップ中に鳴らすループ音です。未設定でもアニメーションは動作します。")]
@@ -213,7 +215,7 @@ public class VRPhotoViewer : MonoBehaviour
             labelText.fontStyle = FontStyles.Bold;
             labelText.alignment = TextAlignmentOptions.MidlineRight;
             labelText.color = scoreLabelColor;
-            labelText.enableWordWrapping = false;
+            labelText.textWrappingMode = TextWrappingModes.NoWrap;
             labelText.raycastTarget = false;
             labelText.outlineColor = scoreLabelOutlineColor;
             labelText.outlineWidth = scoreLabelOutlineWidth;

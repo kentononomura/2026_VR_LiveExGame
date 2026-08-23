@@ -7,7 +7,7 @@ public class MissingScriptDetector : Editor
     public static void FindMissingScripts()
     {
         int missingCount = 0;
-        GameObject[] goList = GameObject.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        GameObject[] goList = GameObject.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
         
         foreach (GameObject go in goList)
         {
@@ -29,7 +29,7 @@ public class MissingScriptDetector : Editor
     public static void RemoveMissingScripts()
     {
         int removedCount = 0;
-        GameObject[] goList = GameObject.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        GameObject[] goList = GameObject.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
         
         foreach (GameObject go in goList)
         {

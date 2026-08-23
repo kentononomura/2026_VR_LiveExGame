@@ -137,6 +137,11 @@ public class VRPauseMenu : MonoBehaviour
         SyncVolumeSlider();
         SetResumeButtonVisible(false);
         SetTitleButtonVisible(isResultScene);
+        VRMenuPlacementAnchor sceneAnchor = FindSceneMenuAnchor(activeSceneName);
+        bool showMicrophoneIndicator =
+            isTitleScene &&
+            (sceneAnchor == null || sceneAnchor.ShowMicrophoneIndicatorOnTitle);
+        SetMicrophoneIndicatorVisible(showMicrophoneIndicator);
         menuUI.SetActive(true);
 
         ToggleRayInteractors(true, false);
@@ -570,6 +575,17 @@ public class VRPauseMenu : MonoBehaviour
             volumeSlider.onValueChanged.AddListener((val) => { AudioListener.volume = val; });
         }
 
+        Transform panel = menuUI.transform.Find("Panel");
+        Text volumeLabel = panel != null
+            ? panel.Find("VolumeLabel")?.GetComponent<Text>()
+            : null;
+        if (panel != null)
+        {
+            TitleMicrophoneIndicator.Create(
+                panel,
+                volumeLabel != null ? volumeLabel.font : null);
+        }
+
         Button resumeBtn = menuUI.transform.Find("Panel/ResumeBtn").GetComponent<Button>();
         if (resumeBtn != null)
         {
@@ -813,6 +829,17 @@ public class VRPauseMenu : MonoBehaviour
         if (titleButton != null)
         {
             titleButton.gameObject.SetActive(visible);
+        }
+    }
+
+    private void SetMicrophoneIndicatorVisible(bool visible)
+    {
+        if (menuUI == null) return;
+
+        Transform indicator = menuUI.transform.Find("Panel/MicrophoneIndicator");
+        if (indicator != null)
+        {
+            indicator.gameObject.SetActive(visible);
         }
     }
 }

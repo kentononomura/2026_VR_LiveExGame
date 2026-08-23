@@ -75,6 +75,7 @@ public class VoiceReactionManager : MonoBehaviour
     {
         public VoskCommandType type;
         public byte[] audioData;
+        public int audioLength;
     }
     
     private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
@@ -103,11 +104,16 @@ public class VoiceReactionManager : MonoBehaviour
         yield return new WaitForSeconds(2.0f);
 
 
-        // モデルの初期化
-        string modelPath = Path.Combine(Application.streamingAssetsPath, modelFolderName);
-        if (!Directory.Exists(modelPath))
+        string modelPath = null;
+        string modelPrepareError = null;
+        yield return VoskModelPathResolver.Prepare(
+            modelFolderName,
+            path => modelPath = path,
+            error => modelPrepareError = error);
+
+        if (!string.IsNullOrEmpty(modelPrepareError) || string.IsNullOrEmpty(modelPath))
         {
-            Debug.LogError($"[Vosk] モデルが見つかりません: {modelPath}。StreamingAssets内に配置してください。");
+            Debug.LogError($"[Vosk] モデルを準備できませんでした: {modelPrepareError}");
             yield break;
         }
 
@@ -117,10 +123,17 @@ public class VoiceReactionManager : MonoBehaviour
         {
             try
             {
-                model = new Model(modelPath);
+                model = VoskModelCache.GetOrLoad(modelPath);
                 recognizer = new VoskRecognizer(model, SampleRate);
                 recognizer.SetMaxAlternatives(0);
-                recognizer.SetWords(true);
+                recognizer.SetWords(false);
+
+                if (isShuttingDown)
+                {
+                    recognizer.Dispose();
+                    recognizer = null;
+                    return;
+                }
                 
                 // ロード完了後、ワーカースレッドを起動
                 workerThread = new Thread(VoskWorkerLoop);
@@ -149,9 +162,16 @@ public class VoiceReactionManager : MonoBehaviour
                 }
                 else if (cmd.type == VoskCommandType.ProcessAudio && cmd.audioData != null)
                 {
-                    if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioData.Length))
+                    try
                     {
-                        resultQueue.Enqueue(recognizer.Result());
+                        if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioLength))
+                        {
+                            resultQueue.Enqueue(recognizer.Result());
+                        }
+                    }
+                    finally
+                    {
+                        VoskPcmUtility.Return(cmd.audioData);
                     }
                 }
                 else if (cmd.type == VoskCommandType.FinalResult)
@@ -211,8 +231,8 @@ public class VoiceReactionManager : MonoBehaviour
         // 利用可能なすべてのマイクをログに出力（デバッグ用）
         Debug.Log("[Vosk] 認識されたマイク一覧:\n - " + string.Join("\n - ", Microphone.devices));
 
-        // ループ録音を開始（1秒間のバッファをループ）
-        audioClip = Microphone.Start(microphoneDevice, true, 1, SampleRate);
+        // 処理落ち時にも音声が上書きされにくい3秒間のリングバッファで録音する。
+        audioClip = Microphone.Start(microphoneDevice, true, VoskPcmUtility.MicrophoneBufferSeconds, SampleRate);
         isListening = true;
         Debug.Log($"[Vosk] 音声認識を開始しました。マイク: {microphoneDevice}");
     }
@@ -252,42 +272,33 @@ public class VoiceReactionManager : MonoBehaviour
             Debug.Log($"<color=#00FF00>[Vosk] 🎤 音声入力の受付を開始しました</color>");
         }
 
+        int currentPosition = Microphone.GetPosition(microphoneDevice);
+        if (currentPosition >= 0 && lastSamplePosition != currentPosition)
+        {
+            int sampleCount = currentPosition - lastSamplePosition;
+            if (sampleCount < 0) sampleCount += audioClip.samples;
+
+            float[] samples = new float[sampleCount];
+            audioClip.GetData(samples, lastSamplePosition);
+            lastSamplePosition = currentPosition;
+
+            // 離したフレームの語尾も、確定要求より先に必ずVoskへ渡す。
+            if (isHolding || isReleased)
+            {
+                byte[] byteData = VoskPcmUtility.RentAndConvert(samples, out int byteCount);
+                commandQueue.Enqueue(new VoskCommand
+                {
+                    type = VoskCommandType.ProcessAudio,
+                    audioData = byteData,
+                    audioLength = byteCount
+                });
+            }
+        }
+
         if (isReleased)
         {
             commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
             Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
-        }
-
-        int currentPosition = Microphone.GetPosition(microphoneDevice);
-        if (currentPosition < 0 || lastSamplePosition == currentPosition) return;
-
-        // 新しい音声データを取得
-        int sampleCount = currentPosition - lastSamplePosition;
-        if (sampleCount < 0)
-        {
-            sampleCount += audioClip.samples;
-        }
-
-        float[] samples = new float[sampleCount];
-        audioClip.GetData(samples, lastSamplePosition);
-        lastSamplePosition = currentPosition;
-
-        // キーを押している間だけ音声データをVoskに送る
-        if (isHolding)
-        {
-            // float(Unity)からshort(PCM 16bit)へ変換
-            short[] shortSamples = new short[samples.Length];
-            for (int i = 0; i < samples.Length; i++)
-            {
-                shortSamples[i] = (short)(samples[i] * short.MaxValue);
-            }
-
-            // バイト配列に変換
-            byte[] byteData = new byte[shortSamples.Length * 2];
-            System.Buffer.BlockCopy(shortSamples, 0, byteData, 0, byteData.Length);
-
-            // Voskへデータを送る（別スレッドへキューイング）
-            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.ProcessAudio, audioData = byteData });
         }
     }
 
@@ -345,9 +356,9 @@ public class VoiceReactionManager : MonoBehaviour
             recognizer.Dispose();
         }
         
-        if (model != null)
+        while (commandQueue.TryDequeue(out VoskCommand pendingCommand))
         {
-            model.Dispose();
+            VoskPcmUtility.Return(pendingCommand.audioData);
         }
     }
 }
