@@ -626,8 +626,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TitleVoiceManager
   targetSceneName: TestScene
   modelFolderName: vosk-model-small-ja-0.22
-  customMicrophoneName: Yamaha AG03MK2
+  customMicrophoneName: 
   showRecognitionLog: 1
+  microphoneMeterSensitivity: 20
   pushToTalkAction:
     m_Name: PushToTalk
     m_Type: 1

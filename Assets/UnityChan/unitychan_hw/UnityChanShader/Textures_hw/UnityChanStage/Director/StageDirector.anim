@@ -128,7 +128,7 @@ AnimationClip:
     script: {fileID: 11500000, guid: 5324f089717a74a5ba46dc8db576ab58, type: 3}
   m_EulerEditorCurves: []
   m_Events:
-  - time: 2.01666665
+  - time: 2.2166667
     functionName: StartMusic
     data: 
     objectReferenceParameter: {fileID: 0}

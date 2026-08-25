@@ -13,6 +13,9 @@ using UnityEngine.InputSystem;
 [System.Serializable]
 public class KeywordReaction
 {
+    [Tooltip("同じリアクションを表す別表記で共有する論理コマンドIDです。視覚演出の切り替えにも使用します。")]
+    public string commandId;
+
     [Tooltip("音声認識で検知するキーワード（ひらがな、カタカナ、漢字など認識されやすい文字）")]
     public string keyword;
     [Tooltip("再生するアニメーションのステート名（例: Perfect, Great, Miss, Jump）")]
@@ -20,6 +23,9 @@ public class KeywordReaction
     
     [Tooltip("上半身に再生するAnimatorステート名（例: Wave, Kiss）。空欄なら再生しません")]
     public string bodyReactionName;
+
+    [Tooltip("体リアクションを再生するAnimatorレイヤー名です。空欄ならReactionLayerを使用します。コマンドごとに異なるAvatarMaskを選べます。")]
+    public string bodyReactionLayerName;
 }
 
 public class VoiceReactionManager : MonoBehaviour
@@ -47,11 +53,11 @@ public class VoiceReactionManager : MonoBehaviour
     [Tooltip("ここで設定したキーワードをマイクで話すと、対応するリアクションが再生されます")]
     public List<KeywordReaction> keywordReactions = new List<KeywordReaction>
     {
-        new KeywordReaction { keyword = "すごい", reactionName = "Perfect" },
-        new KeywordReaction { keyword = "かわいい", reactionName = "Perfect" },
-        new KeywordReaction { keyword = "ジャンプ", reactionName = "JUMP00" },
-        new KeywordReaction { keyword = "どんまい", reactionName = "Great" },
-        new KeywordReaction { keyword = "ミス", reactionName = "Miss" }
+        new KeywordReaction { commandId = "Perfect", keyword = "すごい", reactionName = "Perfect" },
+        new KeywordReaction { commandId = "Perfect", keyword = "かわいい", reactionName = "Perfect" },
+        new KeywordReaction { commandId = "Jump", keyword = "ジャンプ", reactionName = "JUMP00" },
+        new KeywordReaction { commandId = "Great", keyword = "どんまい", reactionName = "Great" },
+        new KeywordReaction { commandId = "Miss", keyword = "ミス", reactionName = "Miss" }
     };
 
     [Header("References")]

@@ -436,6 +436,8 @@ MonoBehaviour:
   - {fileID: 1855825219}
   overlayIntensity: 1
   lookatIntensity: 0.83
+  synchronizePerformanceToMusic: 1
+  scheduledStartLeadTime: 0.08
 --- !u!95 &1080986682
 Animator:
   serializedVersion: 7
@@ -548,6 +550,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1878753596}
   - component: {fileID: 1878753595}
+  - component: {fileID: 1878753597}
   m_Layer: 0
   m_Name: TestSceneVoiceManager
   m_TagString: Untagged
@@ -568,8 +571,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestSceneVoiceManager
   modelFolderName: vosk-model-small-ja-0.22
-  customMicrophoneName: Yamaha AG03MK2
+  customMicrophoneName: ''
   showRecognitionLog: 1
+  constrainRecognitionToCommands: 1
+  recognitionGrammarPhrases:
+  - "\u3053\u3063\u3061 \u5411\u3044\u3066"
+  - "\u3053\u3063\u3061 \u898B\u3066"
+  - "\u624B \u3092 \u632F\u3063\u3066"
+  - "\u624B \u632F\u3063\u3066"
+  - "\u304B\u308F\u3044\u3044"
+  - "\u53EF\u611B\u3044"
+  - "\u304B\u308F\u3044\u3044 \u306D"
+  - "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
+  - "\u30E6\u30CB\u30C6\u30A3 \u3061\u3083\u3093"
+  - '[unk]'
   pushToTalkAction:
     m_Name: PushToTalk
     m_Type: 0
@@ -588,85 +603,130 @@ MonoBehaviour:
       m_Flags: 0
     m_Flags: 0
   keywordReactions:
-  - keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
+  - commandId: LookAt
+    keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u3053\u3061\u3080\u3044\u3066"
+  - commandId: LookAt
+    keyword: "\u3053\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u3053\u3063\u3061"
+  - commandId: LookAt
+    keyword: "\u3053\u3063\u3061"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u3080\u3044\u3066"
+  - commandId: LookAt
+    keyword: "\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u3053\u3063\u3061\u898B\u3066"
+  - commandId: LookAt
+    keyword: "\u3053\u3063\u3061\u898B\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u3053\u3063\u3061\u307F\u3066"
+  - commandId: LookAt
+    keyword: "\u3053\u3063\u3061\u307F\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u898B\u3066"
+  - commandId: LookAt
+    keyword: "\u898B\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u307F\u3066"
+  - commandId: LookAt
+    keyword: "\u307F\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
-  - keyword: "\u624B\u632F\u3063\u3066"
+  - commandId: Wave
+    keyword: "\u624B\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
-  - keyword: "\u624B\u3092\u632F\u3063\u3066"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: Wave
+    keyword: "\u624B\u3092\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
-  - keyword: "\u3066\u632F\u3063\u3066"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: Wave
+    keyword: "\u3066\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
-  - keyword: "\u632F\u3063\u3066"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: Wave
+    keyword: "\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
-  - keyword: "\u3075\u3063\u3066"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: Wave
+    keyword: "\u3075\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
-  - keyword: "\u304B\u308F\u3044\u3044"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: Cute
+    keyword: "\u304B\u308F\u3044\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
-  - keyword: "\u6CB3\u4E95"
+  - commandId: Cute
+    keyword: "\u6CB3\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
-  - keyword: "\u53EF\u611B\u3044"
+  - commandId: Cute
+    keyword: "\u53EF\u611B\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
-  - keyword: "\u304B\u308F\u3044"
+  - commandId: Cute
+    keyword: "\u304B\u308F\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
-  - keyword: "\u5DDD\u4E95"
+  - commandId: Cute
+    keyword: "\u5DDD\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
-  - keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
+  - commandId: Default
+    keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan
     bodyReactionName: 
-  - keyword: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
+  - commandId: UnityChanCall
+    keyword: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
     reactionName: default@unitychan
     bodyReactionName: Waving
-  - keyword: "\u30E6\u30CB\u30C6\u30A3\u30FC\u3061\u3083\u3093"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: UnityChanCall
+    keyword: "\u30E6\u30CB\u30C6\u30A3\u30FC\u3061\u3083\u3093"
     reactionName: default@unitychan
     bodyReactionName: Waving
-  - keyword: "\u30E6\u30CB\u3061\u3083\u3093"
+    bodyReactionLayerName: ArmReactionLayer
+  - commandId: UnityChanCall
+    keyword: "\u30E6\u30CB\u3061\u3083\u3093"
     reactionName: default@unitychan
     bodyReactionName: Waving
+    bodyReactionLayerName: ArmReactionLayer
   enableFuzzyMatching: 1
   partialSimilarityThreshold: 0.8
   finalSimilarityThreshold: 0.7
   partialStableDuration: 0.2
   fuzzyMinimumCharacters: 3
   minimumBestMatchMargin: 0.05
+  preRollDuration: 0.2
+  postRollDuration: 0.25
   lookAtDuration: 3
   rigBlendSpeed: 5
+  presentationMode: 1
+  bodyReactionBlendInDuration: 0.3
   bodyReactionDuration: 2.5
   bodyReturnBlendDuration: 0.5
+  characterFacingSmoothTime: 0.3
+  characterFacingYawOffset: 0
   aimTargetSmoothTime: 0.08
   faceReactionDuration: 2
   enableUpperBodyLookAt: 1
+  lookAtMode: 1
+  stabilizedDirectionSmoothTime: 0.18
+  stabilizedDirectionDeadZone: 1.5
+  stabilizedTargetDistance: 2
+  stabilizedUpperChestWeight: 0.3
+  stabilizedHeadWeight: 0.65
+  stabilizedUpperChestMaxAngle: 25
+  stabilizedHeadMaxAngle: 50
+  stabilizedRigBlendSpeed: 3.33
   spineLookWeight: 0.1
   chestLookWeight: 0.15
   upperChestLookWeight: 0.25
@@ -759,6 +819,46 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1878753597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a9b40a61be347f695d70aef4341e87d, type: 3}
+  m_Name: ''
+  m_EditorClassIdentifier: Assembly-CSharp::VoiceReactionVisualFeedback
+  defaultEffectStyle: 1
+  defaultLocalOffset: {x: 0, y: 0.25, z: 0.05}
+  defaultScale: 1
+  commandEffects:
+  - commandId: LookAt
+    effectStyle: 0
+    customEffectPrefab: {fileID: 0}
+    overridePlacement: 0
+    localOffset: {x: 0, y: 0.25, z: 0.05}
+    scale: 1
+  - commandId: Wave
+    effectStyle: 0
+    customEffectPrefab: {fileID: 0}
+    overridePlacement: 0
+    localOffset: {x: 0, y: 0.25, z: 0.05}
+    scale: 1
+  - commandId: Cute
+    effectStyle: 0
+    customEffectPrefab: {fileID: 0}
+    overridePlacement: 0
+    localOffset: {x: 0, y: 0.25, z: 0.05}
+    scale: 1
+  - commandId: UnityChanCall
+    effectStyle: 0
+    customEffectPrefab: {fileID: 0}
+    overridePlacement: 0
+    localOffset: {x: 0, y: 0.25, z: 0.05}
+    scale: 1
 --- !u!1 &2059686874
 GameObject:
   m_ObjectHideFlags: 0

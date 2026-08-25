@@ -15,12 +15,42 @@ using UnityEngine.InputSystem;
 
 // We use the KeywordReaction class defined in VoiceReactionManager.cs
 
+public enum VoiceLookAtMode
+{
+    Legacy,
+    Stabilized
+}
+
+public enum VoiceReactionPresentationMode
+{
+    Legacy,
+    Coordinated
+}
+
 public class TestSceneVoiceManager : MonoBehaviour
 {
     [Header("Vosk Settings")]
     public string modelFolderName = "vosk-model-small-ja-0.22";
     public string customMicrophoneName = "";
     public bool showRecognitionLog = true;
+
+    [Tooltip("一般日本語の自由認識ではなく、下のコマンド文法から認識結果を選ばせます。")]
+    [SerializeField] private bool constrainRecognitionToCommands = true;
+
+    [Tooltip("Voskへ渡すコマンド文法です。日本語モデルの単語境界に合わせ、語の間を半角スペースで区切ります。")]
+    [SerializeField] private List<string> recognitionGrammarPhrases = new List<string>
+    {
+        "こっち 向いて",
+        "こっち 見て",
+        "手 を 振って",
+        "手 振って",
+        "かわいい",
+        "可愛い",
+        "かわいい ね",
+        "ユニティちゃん",
+        "ユニティ ちゃん",
+        "[unk]"
+    };
 
     [Header("Input Settings")]
 #if ENABLE_INPUT_SYSTEM
@@ -31,10 +61,10 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Header("Keywords & Reactions")]
     public List<KeywordReaction> keywordReactions = new List<KeywordReaction>
     {
-        new KeywordReaction { keyword = "こっちむいて", reactionName = "smile1@unitychan", bodyReactionName = "" },
-        new KeywordReaction { keyword = "手振って", reactionName = "smile2@unitychan", bodyReactionName = "Wave" },
-        new KeywordReaction { keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss" },
-        new KeywordReaction { keyword = "デフォルト", reactionName = "default@unitychan", bodyReactionName = "" }
+        new KeywordReaction { commandId = "LookAt", keyword = "こっちむいて", reactionName = "smile1@unitychan", bodyReactionName = "" },
+        new KeywordReaction { commandId = "Wave", keyword = "手振って", reactionName = "smile2@unitychan", bodyReactionName = "Waving", bodyReactionLayerName = "ArmReactionLayer" },
+        new KeywordReaction { commandId = "Cute", keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss" },
+        new KeywordReaction { commandId = "Default", keyword = "デフォルト", reactionName = "default@unitychan", bodyReactionName = "" }
     };
 
     [Header("Recognition Matching")]
@@ -61,9 +91,26 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Range(0f, 0.5f)]
     [SerializeField] private float minimumBestMatchMargin = 0.05f;
 
+    [Header("Push To Talk Audio Buffer")]
+    [Tooltip("トリガーを押す直前から認識へ含める時間です。語頭の欠けを防ぎます。")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float preRollDuration = 0.2f;
+
+    [Tooltip("トリガーを離した後も認識へ含める時間です。語尾の欠けを防ぎます。")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float postRollDuration = 0.25f;
+
     [Header("Reaction Settings")]
     public float lookAtDuration = 3f;
     public float rigBlendSpeed = 5f;
+
+    [Tooltip("Legacyは現在までの上半身追従、Coordinatedは全身の水平旋回＋頭部追従を使用します。Play開始後の変更は反映されません。")]
+    [SerializeField] private VoiceReactionPresentationMode presentationMode =
+        VoiceReactionPresentationMode.Coordinated;
+
+    [Tooltip("体リアクションのレイヤーWeightを滑らかに1へ上げる時間（秒）です。")]
+    [Min(0f)]
+    [SerializeField] private float bodyReactionBlendInDuration = 0.3f;
 
     [Tooltip("上半身リアクションを再生してからダンスへ戻し始めるまでの時間（秒）です。")]
     [Min(0f)]
@@ -72,6 +119,15 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Tooltip("上半身リアクションのWeightを0へ戻す時間（秒）です。急な姿勢変化を防ぎます。")]
     [Min(0.01f)]
     [SerializeField] private float bodyReturnBlendDuration = 0.5f;
+
+    [Header("Coordinated Character Facing")]
+    [Tooltip("プレイヤー方向へ向く旋回の滑らかさです。値が大きいほどゆっくり向きます。")]
+    [Range(0.05f, 1f)]
+    [SerializeField] private float characterFacingSmoothTime = 0.3f;
+
+    [Tooltip("モデル正面とTransform.forwardがずれている場合の補正角度です。通常は0です。")]
+    [Range(-180f, 180f)]
+    [SerializeField] private float characterFacingYawOffset = 0f;
 
     [Tooltip("VRカメラ位置の微細な揺れを目線ターゲットへ反映しにくくする時間（秒）です。")]
     [Range(0f, 0.5f)]
@@ -82,8 +138,42 @@ public class TestSceneVoiceManager : MonoBehaviour
     [SerializeField] private float faceReactionDuration = 3f;
 
     [Header("Upper Body Look At")]
-    [Tooltip("音声リアクション成功時に、胸・首・頭をプレイヤーへ向けます。")]
+    [Tooltip("Legacy系の目線制御で胸・首もプレイヤーへ向けます。Coordinatedでは上半身の競合を避け、頭だけを追従させます。")]
     [SerializeField] private bool enableUpperBodyLookAt = true;
+
+    [Tooltip("Legacyは従来の5ボーン制御、Stabilizedは安定化した方向へ向けます。Coordinatedとの組み合わせではHeadだけを使用します。変更後はPlayし直してください。")]
+    [SerializeField] private VoiceLookAtMode lookAtMode = VoiceLookAtMode.Stabilized;
+
+    [Header("Stabilized Look At")]
+    [Tooltip("HMD方向の変化を滑らかにする時間です。")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float stabilizedDirectionSmoothTime = 0.18f;
+
+    [Tooltip("この角度以内のHMD方向の変化を無視し、VRトラッキングの微細な揺れを抑えます。")]
+    [Range(0f, 10f)]
+    [SerializeField] private float stabilizedDirectionDeadZone = 1.5f;
+
+    [Tooltip("安定化した方向上にAimTargetを置く距離です。HMDとの実距離変化をAimへ伝えません。")]
+    [Min(0.1f)]
+    [SerializeField] private float stabilizedTargetDistance = 2f;
+
+    [Range(0f, 1f)]
+    [SerializeField] private float stabilizedUpperChestWeight = 0.3f;
+
+    [Range(0f, 1f)]
+    [SerializeField] private float stabilizedHeadWeight = 0.65f;
+
+    [Range(0f, 90f)]
+    [SerializeField] private float stabilizedUpperChestMaxAngle = 25f;
+
+    [Range(0f, 120f)]
+    [SerializeField] private float stabilizedHeadMaxAngle = 50f;
+
+    [Tooltip("StabilizedモードでRig Weightを0から1へ変化させる速さです。3.33で約0.3秒です。")]
+    [Min(0.01f)]
+    [SerializeField] private float stabilizedRigBlendSpeed = 3.33f;
+
+    [Header("Legacy Look At")]
 
     [Tooltip("背骨下部へ配分する追従強度です。")]
     [Range(0f, 1f)]
@@ -143,6 +233,12 @@ public class TestSceneVoiceManager : MonoBehaviour
     private bool hasHandledRecognitionThisPress;
     private KeywordReaction stablePartialCandidate;
     private float stablePartialSince;
+    private float[] preRollBuffer;
+    private int preRollWriteIndex;
+    private int preRollSampleCount;
+    private bool shouldSendPreRoll;
+    private bool isPostRollActive;
+    private int postRollSamplesRemaining;
 
     [System.Serializable]
     private class VoskRecognitionResult
@@ -170,6 +266,7 @@ public class TestSceneVoiceManager : MonoBehaviour
     private Rig targetRig;
     private float targetRigWeight = 0f;
     private LipSyncMouthPriority lipSyncMouthPriority;
+    private VoiceReactionVisualFeedback visualFeedback;
 
     void Start()
     {
@@ -204,13 +301,16 @@ public class TestSceneVoiceManager : MonoBehaviour
             yield break;
         }
 
+        string recognitionGrammar = BuildRecognitionGrammarJson();
         Debug.Log($"[Vosk] TestScene 用のモデルロード非同期タスクを起動します: {modelPath}");
         Task.Run(() =>
         {
             try
             {
                 model = VoskModelCache.GetOrLoad(modelPath);
-                recognizer = new VoskRecognizer(model, SampleRate);
+                recognizer = string.IsNullOrEmpty(recognitionGrammar)
+                    ? new VoskRecognizer(model, SampleRate)
+                    : new VoskRecognizer(model, SampleRate, recognitionGrammar);
                 recognizer.SetMaxAlternatives(0);
                 // キーワード判定では単語ごとの時刻情報を使わないため、JSON生成負荷を抑える。
                 recognizer.SetWords(false);
@@ -227,7 +327,8 @@ public class TestSceneVoiceManager : MonoBehaviour
                 workerThread.Start();
 
                 isModelLoaded = true;
-                Debug.Log("[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。");
+                string mode = string.IsNullOrEmpty(recognitionGrammar) ? "一般日本語" : "コマンド文法制限";
+                Debug.Log($"[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。認識モード: {mode}");
             }
             catch (System.Exception ex)
             {
@@ -337,6 +438,8 @@ public class TestSceneVoiceManager : MonoBehaviour
 
         if (isListening)
         {
+            lastSamplePosition = 0;
+            InitializePreRollBuffer();
             string selectedName = string.IsNullOrEmpty(microphoneDevice)
                 ? "Quest/Android システム既定マイク"
                 : microphoneDevice;
@@ -393,6 +496,9 @@ public class TestSceneVoiceManager : MonoBehaviour
             if (!isLeftTriggerDown)
             {
                 isLeftTriggerDown = true;
+                isPostRollActive = false;
+                postRollSamplesRemaining = 0;
+                shouldSendPreRoll = true;
                 ResetRecognitionMatchState();
                 if (isListening && recognizer != null)
                 {
@@ -413,8 +519,9 @@ public class TestSceneVoiceManager : MonoBehaviour
                 isLeftTriggerDown = false;
                 if (isListening && recognizer != null)
                 {
-                    // 最新のマイクデータを送信した後で FinalResult を要求する。
-                    shouldFinalize = true;
+                    postRollSamplesRemaining = Mathf.CeilToInt(postRollDuration * SampleRate);
+                    isPostRollActive = postRollSamplesRemaining > 0;
+                    shouldFinalize = !isPostRollActive;
                 }
             }
         }
@@ -438,27 +545,30 @@ public class TestSceneVoiceManager : MonoBehaviour
             audioClip.GetData(samples, lastSamplePosition);
             lastSamplePosition = currentPosition;
 
-            // 離したフレームの語尾も、確定要求より先に必ずVoskへ渡す。
-            if (isHolding || shouldFinalize)
+            if (shouldSendPreRoll && (isHolding || isPostRollActive || shouldFinalize))
             {
-                float maxVal = 0f;
-                foreach (var s in samples)
-                {
-                    float absVal = Mathf.Abs(s);
-                    if (absVal > maxVal) maxVal = absVal;
-                }
-                if (maxVal < 0.001f)
-                {
-                    Debug.LogWarning("[Vosk] 🎤 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
-                }
+                EnqueuePreRollAudio();
+                shouldSendPreRoll = false;
+            }
 
-                byte[] byteData = VoskPcmUtility.RentAndConvert(samples, out int byteCount);
-                commandQueue.Enqueue(new VoskCommand
+            // 離した後も postRollDuration 分の語尾を Vosk へ渡してから確定する。
+            if (isHolding || isPostRollActive || shouldFinalize)
+            {
+                EnqueueAudioSamples(samples);
+            }
+            else
+            {
+                AppendPreRollSamples(samples);
+            }
+
+            if (isPostRollActive && !isHolding)
+            {
+                postRollSamplesRemaining -= sampleCount;
+                if (postRollSamplesRemaining <= 0)
                 {
-                    type = VoskCommandType.ProcessAudio,
-                    audioData = byteData,
-                    audioLength = byteCount
-                });
+                    isPostRollActive = false;
+                    shouldFinalize = true;
+                }
             }
         }
 
@@ -469,11 +579,111 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
     }
 
+    private string BuildRecognitionGrammarJson()
+    {
+        if (!constrainRecognitionToCommands || recognitionGrammarPhrases == null)
+        {
+            return null;
+        }
+
+        StringBuilder json = new StringBuilder("[");
+        int phraseCount = 0;
+        foreach (string phrase in recognitionGrammarPhrases)
+        {
+            if (string.IsNullOrWhiteSpace(phrase)) continue;
+
+            if (phraseCount > 0) json.Append(',');
+            json.Append('"');
+            foreach (char character in phrase.Trim())
+            {
+                if (character == '"' || character == '\\') json.Append('\\');
+                json.Append(character);
+            }
+            json.Append('"');
+            phraseCount++;
+        }
+        json.Append(']');
+
+        if (phraseCount == 0)
+        {
+            Debug.LogWarning("[Vosk] コマンド文法が空のため、一般日本語認識に切り替えます。");
+            return null;
+        }
+
+        Debug.Log($"[Vosk] コマンド文法を使用します: {json}");
+        return json.ToString();
+    }
+
+    private void InitializePreRollBuffer()
+    {
+        int capacity = Mathf.CeilToInt(preRollDuration * SampleRate);
+        preRollBuffer = capacity > 0 ? new float[capacity] : null;
+        preRollWriteIndex = 0;
+        preRollSampleCount = 0;
+        shouldSendPreRoll = false;
+        isPostRollActive = false;
+        postRollSamplesRemaining = 0;
+    }
+
+    private void AppendPreRollSamples(float[] samples)
+    {
+        if (preRollBuffer == null || preRollBuffer.Length == 0 || samples == null) return;
+
+        foreach (float sample in samples)
+        {
+            preRollBuffer[preRollWriteIndex] = sample;
+            preRollWriteIndex = (preRollWriteIndex + 1) % preRollBuffer.Length;
+            if (preRollSampleCount < preRollBuffer.Length) preRollSampleCount++;
+        }
+    }
+
+    private void EnqueuePreRollAudio()
+    {
+        if (preRollBuffer == null || preRollSampleCount == 0) return;
+
+        float[] orderedSamples = new float[preRollSampleCount];
+        int startIndex = (preRollWriteIndex - preRollSampleCount + preRollBuffer.Length) % preRollBuffer.Length;
+        for (int i = 0; i < preRollSampleCount; i++)
+        {
+            orderedSamples[i] = preRollBuffer[(startIndex + i) % preRollBuffer.Length];
+        }
+
+        EnqueueAudioSamples(orderedSamples);
+        preRollSampleCount = 0;
+        preRollWriteIndex = 0;
+    }
+
+    private void EnqueueAudioSamples(float[] samples)
+    {
+        if (samples == null || samples.Length == 0) return;
+
+        float maxVal = 0f;
+        foreach (float sample in samples)
+        {
+            float absVal = Mathf.Abs(sample);
+            if (absVal > maxVal) maxVal = absVal;
+        }
+        if (maxVal < 0.001f)
+        {
+            Debug.LogWarning("[Vosk] 🎤 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+        }
+
+        byte[] byteData = VoskPcmUtility.RentAndConvert(samples, out int byteCount);
+        commandQueue.Enqueue(new VoskCommand
+        {
+            type = VoskCommandType.ProcessAudio,
+            audioData = byteData,
+            audioLength = byteCount
+        });
+    }
+
     private Animator targetAnimator;
     private Coroutine bodyReactionCoroutine;
     private Coroutine faceReactionCoroutine;
     private Coroutine lookAtCoroutine;
     private Coroutine rigBlendCoroutine;
+    private VoiceReactionFacingController facingController;
+    private int activeBodyLayerIndex = -1;
 
     private void TrySetupUnityChan()
     {
@@ -492,6 +702,17 @@ public class TestSceneVoiceManager : MonoBehaviour
                 lipSyncMouthPriority = unityChanObj.AddComponent<LipSyncMouthPriority>();
             }
             SetupAnimationRigging(unityChanObj);
+
+            if (presentationMode == VoiceReactionPresentationMode.Coordinated)
+            {
+                facingController = unityChanObj.GetComponent<VoiceReactionFacingController>();
+                if (facingController == null)
+                {
+                    facingController = unityChanObj.AddComponent<VoiceReactionFacingController>();
+                }
+                facingController.smoothTime = characterFacingSmoothTime;
+                facingController.modelForwardYawOffset = characterFacingYawOffset;
+            }
         }
     }
 
@@ -529,39 +750,80 @@ public class TestSceneVoiceManager : MonoBehaviour
         
         var aimTarget = new GameObject("AimTarget");
         aimTarget.transform.SetParent(rigObj.transform, false);
-        var follower = aimTarget.AddComponent<AimTargetFollower>();
-        follower.targetCamera = mainCam;
-        follower.smoothTime = aimTargetSmoothTime;
+
+        if (lookAtMode == VoiceLookAtMode.Stabilized)
+        {
+            var follower = aimTarget.AddComponent<StabilizedAimTargetFollower>();
+            follower.targetCamera = mainCam;
+            follower.originTransform = character.transform;
+            Transform head = targetAnimator.GetBoneTransform(HumanBodyBones.Head);
+            follower.originLocalOffset = head != null
+                ? character.transform.InverseTransformPoint(head.position)
+                : new Vector3(0f, 1.4f, 0f);
+            follower.directionSmoothTime = stabilizedDirectionSmoothTime;
+            follower.directionDeadZoneDegrees = stabilizedDirectionDeadZone;
+            follower.targetDistance = stabilizedTargetDistance;
+        }
+        else
+        {
+            var follower = aimTarget.AddComponent<AimTargetFollower>();
+            follower.targetCamera = mainCam;
+            follower.smoothTime = aimTargetSmoothTime;
+        }
 
         if (mainCam != null)
         {
             aimTarget.transform.position = mainCam.transform.position;
         }
 
-        // 4. Distribute the turn across the existing Humanoid upper-body bones.
-        if (enableUpperBodyLookAt)
+        // 4. Coordinatedではルートが水平に向くため、Rigは頭だけを補助する。
+        // Legacy presentationでは、直前までのStabilized（胸上部＋頭）を保持する。
+        if (lookAtMode == VoiceLookAtMode.Stabilized)
         {
+            if (presentationMode == VoiceReactionPresentationMode.Legacy && enableUpperBodyLookAt)
+            {
+                HumanBodyBones upperBodyBone =
+                    targetAnimator.GetBoneTransform(HumanBodyBones.UpperChest) != null
+                        ? HumanBodyBones.UpperChest
+                        : HumanBodyBones.Chest;
+                AddUpperBodyAimConstraint(
+                    rigObj.transform, aimTarget.transform, upperBodyBone,
+                    "StabilizedUpperChestAimConstraint", stabilizedUpperChestWeight,
+                    stabilizedUpperChestMaxAngle, false);
+            }
+
             AddUpperBodyAimConstraint(
-                rigObj.transform, aimTarget.transform, HumanBodyBones.Spine,
-                "SpineAimConstraint", spineLookWeight, upperBodyMaxLookAngle, false);
+                rigObj.transform, aimTarget.transform, HumanBodyBones.Head,
+                "StabilizedHeadAimConstraint", stabilizedHeadWeight,
+                stabilizedHeadMaxAngle, true);
+        }
+        else
+        {
+            // Legacy: 以前の5ボーン制御を数値も含めてそのまま保持する。
+            if (enableUpperBodyLookAt)
+            {
+                AddUpperBodyAimConstraint(
+                    rigObj.transform, aimTarget.transform, HumanBodyBones.Spine,
+                    "SpineAimConstraint", spineLookWeight, upperBodyMaxLookAngle, false);
+                AddUpperBodyAimConstraint(
+                    rigObj.transform, aimTarget.transform, HumanBodyBones.Chest,
+                    "ChestAimConstraint", chestLookWeight, upperBodyMaxLookAngle, false);
+                AddUpperBodyAimConstraint(
+                    rigObj.transform, aimTarget.transform, HumanBodyBones.UpperChest,
+                    "UpperChestAimConstraint", upperChestLookWeight, upperBodyMaxLookAngle, false);
+                AddUpperBodyAimConstraint(
+                    rigObj.transform, aimTarget.transform, HumanBodyBones.Neck,
+                    "NeckAimConstraint", neckLookWeight, upperBodyMaxLookAngle, false);
+            }
+
+            // Unity-chan's head local Y axis points out of her face.
             AddUpperBodyAimConstraint(
-                rigObj.transform, aimTarget.transform, HumanBodyBones.Chest,
-                "ChestAimConstraint", chestLookWeight, upperBodyMaxLookAngle, false);
-            AddUpperBodyAimConstraint(
-                rigObj.transform, aimTarget.transform, HumanBodyBones.UpperChest,
-                "UpperChestAimConstraint", upperChestLookWeight, upperBodyMaxLookAngle, false);
-            AddUpperBodyAimConstraint(
-                rigObj.transform, aimTarget.transform, HumanBodyBones.Neck,
-                "NeckAimConstraint", neckLookWeight, upperBodyMaxLookAngle, false);
+                rigObj.transform, aimTarget.transform, HumanBodyBones.Head,
+                "HeadAimConstraint", headLookWeight, headMaxLookAngle, true);
         }
 
-        // Unity-chan's head local Y axis points out of her face.
-        AddUpperBodyAimConstraint(
-            rigObj.transform, aimTarget.transform, HumanBodyBones.Head,
-            "HeadAimConstraint", headLookWeight, headMaxLookAngle, true);
-
         rigBuilder.Build();
-        Debug.Log("TestSceneVoiceManager: Upper-body look-at rig dynamically setup on UnityChan.");
+        Debug.Log($"TestSceneVoiceManager: Voice look-at rig setup. Presentation: {presentationMode}, Aim: {lookAtMode}");
     }
 
     private void AddUpperBodyAimConstraint(
@@ -687,6 +949,8 @@ public class TestSceneVoiceManager : MonoBehaviour
             return;
         }
 
+        bool reactionStarted = false;
+
         // 表情を変更
         if (faceUpdate != null && !string.IsNullOrEmpty(kr.reactionName))
         {
@@ -701,12 +965,25 @@ public class TestSceneVoiceManager : MonoBehaviour
                 lipSyncMouthPriority.PrioritizeFor(faceReactionDuration);
             }
             faceReactionCoroutine = StartCoroutine(ResetFaceReactionRoutine(faceReactionDuration));
+            reactionStarted = true;
         }
 
         // 体のアニメーションを変更（上半身レイヤー）
         if (targetAnimator != null && !string.IsNullOrEmpty(kr.bodyReactionName))
         {
-            int layerIndex = targetAnimator.GetLayerIndex("ReactionLayer");
+            string requestedLayerName =
+                presentationMode == VoiceReactionPresentationMode.Legacy
+                    ? "ReactionLayer"
+                    : (!string.IsNullOrWhiteSpace(kr.bodyReactionLayerName)
+                        ? kr.bodyReactionLayerName
+                        : "ReactionLayer");
+            int layerIndex = targetAnimator.GetLayerIndex(requestedLayerName);
+            if (layerIndex == -1 && requestedLayerName != "ReactionLayer")
+            {
+                Debug.LogWarning($"[VoiceReaction] Animatorレイヤー '{requestedLayerName}' が見つからないためReactionLayerを使用します。");
+                layerIndex = targetAnimator.GetLayerIndex("ReactionLayer");
+            }
+
             if (layerIndex != -1)
             {
                 if (bodyReactionCoroutine != null)
@@ -714,10 +991,26 @@ public class TestSceneVoiceManager : MonoBehaviour
                     StopCoroutine(bodyReactionCoroutine);
                 }
 
-                targetAnimator.SetLayerWeight(layerIndex, 1f);
+                if (activeBodyLayerIndex != -1 && activeBodyLayerIndex != layerIndex)
+                {
+                    targetAnimator.SetLayerWeight(activeBodyLayerIndex, 0f);
+                    targetAnimator.Play("Empty", activeBodyLayerIndex, 0f);
+                }
+
                 targetAnimator.CrossFade(kr.bodyReactionName, 0.2f, layerIndex);
-                bodyReactionCoroutine = StartCoroutine(
-                    ResetBodyReactionRoutine(bodyReactionDuration, layerIndex));
+                activeBodyLayerIndex = layerIndex;
+                if (presentationMode == VoiceReactionPresentationMode.Coordinated)
+                {
+                    bodyReactionCoroutine = StartCoroutine(
+                        PlayBodyReactionRoutine(layerIndex));
+                }
+                else
+                {
+                    targetAnimator.SetLayerWeight(layerIndex, 1f);
+                    bodyReactionCoroutine = StartCoroutine(
+                        ResetBodyReactionRoutine(bodyReactionDuration, layerIndex));
+                }
+                reactionStarted = true;
             }
         }
 
@@ -731,6 +1024,39 @@ public class TestSceneVoiceManager : MonoBehaviour
 
             SetRigTargetWeight(1f);
             lookAtCoroutine = StartCoroutine(ResetLookAtRoutine());
+            reactionStarted = true;
+        }
+
+        if (reactionStarted)
+        {
+            if (presentationMode == VoiceReactionPresentationMode.Coordinated &&
+                facingController != null)
+            {
+                Transform playerHead = ResolvePlayerTransform();
+                float facingDuration = Mathf.Max(
+                    lookAtDuration,
+                    string.IsNullOrEmpty(kr.bodyReactionName) ? 0f : bodyReactionDuration);
+                facingController.FaceTarget(playerHead, facingDuration);
+            }
+
+            if (visualFeedback == null)
+            {
+                visualFeedback = GetComponent<VoiceReactionVisualFeedback>();
+                if (visualFeedback == null)
+                {
+                    visualFeedback = gameObject.AddComponent<VoiceReactionVisualFeedback>();
+                }
+            }
+
+            string commandId = !string.IsNullOrWhiteSpace(kr.commandId)
+                ? kr.commandId
+                : (!string.IsNullOrWhiteSpace(kr.bodyReactionName)
+                    ? kr.bodyReactionName
+                    : kr.reactionName);
+            visualFeedback.Play(
+                commandId,
+                targetAnimator,
+                unityChanObj != null ? unityChanObj.transform : null);
         }
     }
 
@@ -959,6 +1285,66 @@ public class TestSceneVoiceManager : MonoBehaviour
         // Weightを厳密に0へ確定し、空のOverride Layerとダンスモーションの競合を止める。
         targetAnimator.SetLayerWeight(layerIndex, 0f);
         targetAnimator.Play("Empty", layerIndex, 0f);
+        activeBodyLayerIndex = -1;
+        bodyReactionCoroutine = null;
+    }
+
+    private IEnumerator PlayBodyReactionRoutine(int layerIndex)
+    {
+        if (targetAnimator == null)
+        {
+            bodyReactionCoroutine = null;
+            yield break;
+        }
+
+        float startWeight = targetAnimator.GetLayerWeight(layerIndex);
+        float elapsed = 0f;
+        float blendInDuration = Mathf.Max(0f, bodyReactionBlendInDuration);
+        while (elapsed < blendInDuration && targetAnimator != null)
+        {
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / Mathf.Max(0.0001f, blendInDuration));
+            float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
+            targetAnimator.SetLayerWeight(layerIndex, Mathf.Lerp(startWeight, 1f, easedProgress));
+            yield return null;
+        }
+
+        if (targetAnimator == null)
+        {
+            bodyReactionCoroutine = null;
+            yield break;
+        }
+
+        targetAnimator.SetLayerWeight(layerIndex, 1f);
+        float holdDuration = Mathf.Max(0f, bodyReactionDuration - blendInDuration);
+        if (holdDuration > 0f)
+        {
+            yield return new WaitForSeconds(holdDuration);
+        }
+
+        if (targetAnimator == null)
+        {
+            bodyReactionCoroutine = null;
+            yield break;
+        }
+
+        elapsed = 0f;
+        float blendOutDuration = Mathf.Max(0.01f, bodyReturnBlendDuration);
+        while (elapsed < blendOutDuration && targetAnimator != null)
+        {
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / blendOutDuration);
+            float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
+            targetAnimator.SetLayerWeight(layerIndex, 1f - easedProgress);
+            yield return null;
+        }
+
+        if (targetAnimator != null)
+        {
+            targetAnimator.SetLayerWeight(layerIndex, 0f);
+            targetAnimator.Play("Empty", layerIndex, 0f);
+        }
+        activeBodyLayerIndex = -1;
         bodyReactionCoroutine = null;
     }
 
@@ -996,10 +1382,13 @@ public class TestSceneVoiceManager : MonoBehaviour
     {
         while (targetRig != null && !Mathf.Approximately(targetRig.weight, destination))
         {
+            float activeBlendSpeed = lookAtMode == VoiceLookAtMode.Stabilized
+                ? stabilizedRigBlendSpeed
+                : rigBlendSpeed;
             targetRig.weight = Mathf.MoveTowards(
                 targetRig.weight,
                 destination,
-                Mathf.Max(0.01f, rigBlendSpeed) * Time.deltaTime);
+                Mathf.Max(0.01f, activeBlendSpeed) * Time.deltaTime);
             yield return null;
         }
 
@@ -1032,6 +1421,98 @@ public class TestSceneVoiceManager : MonoBehaviour
     }
 }
 
+/// <summary>
+/// 振付が設定したルート回転を壊さず、音声リアクション中だけプレイヤー方向のYawを加算します。
+/// 外部からルート回転が更新されたフレームは、その新しい回転を基準として追従し直します。
+/// </summary>
+public class VoiceReactionFacingController : MonoBehaviour
+{
+    [Range(0.05f, 1f)] public float smoothTime = 0.3f;
+    [Range(-180f, 180f)] public float modelForwardYawOffset;
+
+    private Transform target;
+    private float activeTimeRemaining;
+    private float currentYawOffset;
+    private float yawVelocity;
+    private Quaternion lastBaseRotation;
+    private Quaternion lastAppliedRotation;
+    private bool hasAppliedRotation;
+
+    public void FaceTarget(Transform newTarget, float duration)
+    {
+        if (newTarget == null) return;
+
+        target = newTarget;
+        activeTimeRemaining = Mathf.Max(0f, duration);
+    }
+
+    void LateUpdate()
+    {
+        float deltaTime = Time.deltaTime;
+        if (deltaTime <= 0f) return;
+
+        Quaternion observedRotation = transform.rotation;
+        Quaternion baseRotation;
+        if (hasAppliedRotation && Quaternion.Angle(observedRotation, lastAppliedRotation) < 0.001f)
+        {
+            baseRotation = lastBaseRotation;
+        }
+        else
+        {
+            // Choreographyなどがこのフレームに回転を更新した場合は、それを新しい基準にする。
+            baseRotation = observedRotation;
+        }
+
+        bool isActive = target != null && activeTimeRemaining > 0f;
+        if (isActive)
+        {
+            activeTimeRemaining = Mathf.Max(0f, activeTimeRemaining - deltaTime);
+        }
+
+        float desiredYawOffset = 0f;
+        if (isActive)
+        {
+            Vector3 toTarget = Vector3.ProjectOnPlane(target.position - transform.position, Vector3.up);
+            Vector3 modelForward = Vector3.ProjectOnPlane(
+                Quaternion.AngleAxis(modelForwardYawOffset, Vector3.up) *
+                (baseRotation * Vector3.forward),
+                Vector3.up);
+            if (toTarget.sqrMagnitude > 0.0001f && modelForward.sqrMagnitude > 0.0001f)
+            {
+                desiredYawOffset = Vector3.SignedAngle(
+                    modelForward.normalized,
+                    toTarget.normalized,
+                    Vector3.up);
+            }
+        }
+
+        currentYawOffset = Mathf.SmoothDampAngle(
+            currentYawOffset,
+            desiredYawOffset,
+            ref yawVelocity,
+            Mathf.Max(0.05f, smoothTime),
+            Mathf.Infinity,
+            deltaTime);
+
+        if (!isActive && Mathf.Abs(Mathf.DeltaAngle(currentYawOffset, 0f)) < 0.05f &&
+            Mathf.Abs(yawVelocity) < 0.05f)
+        {
+            currentYawOffset = 0f;
+            yawVelocity = 0f;
+            transform.rotation = baseRotation;
+            hasAppliedRotation = false;
+            return;
+        }
+
+        Quaternion appliedRotation =
+            Quaternion.AngleAxis(currentYawOffset, Vector3.up) * baseRotation;
+        transform.rotation = appliedRotation;
+        lastBaseRotation = baseRotation;
+        lastAppliedRotation = appliedRotation;
+        hasAppliedRotation = true;
+    }
+}
+
 public class AimTargetFollower : MonoBehaviour
 {
     public Camera targetCamera;
@@ -1060,5 +1541,65 @@ public class AimTargetFollower : MonoBehaviour
                 Mathf.Infinity,
                 Time.deltaTime);
         }
+    }
+}
+
+/// <summary>
+/// 拘束対象ボーン自身ではなくキャラクタールート上の固定基準点からHMD方向を計算し、
+/// 距離変化を捨てた方向へデッドゾーンと角度平滑化を適用します。
+/// </summary>
+public class StabilizedAimTargetFollower : MonoBehaviour
+{
+    public Camera targetCamera;
+    public Transform originTransform;
+    public Vector3 originLocalOffset = new Vector3(0f, 1.4f, 0f);
+    [Min(0f)] public float directionSmoothTime = 0.18f;
+    [Range(0f, 10f)] public float directionDeadZoneDegrees = 1.5f;
+    [Min(0.1f)] public float targetDistance = 2f;
+
+    private Vector3 stableDirection;
+    private bool initialized;
+
+    void Update()
+    {
+        if (targetCamera == null || originTransform == null) return;
+
+        Vector3 origin = originTransform.TransformPoint(originLocalOffset);
+        Vector3 desiredDirection = targetCamera.transform.position - origin;
+        if (desiredDirection.sqrMagnitude < 0.000001f) return;
+        desiredDirection.Normalize();
+
+        if (!initialized)
+        {
+            stableDirection = desiredDirection;
+            initialized = true;
+        }
+        else
+        {
+            float angle = Vector3.Angle(stableDirection, desiredDirection);
+            float deadZone = Mathf.Max(0f, directionDeadZoneDegrees);
+            if (angle > deadZone)
+            {
+                float followFraction = (angle - deadZone) / Mathf.Max(angle, 0.0001f);
+                Vector3 directionOutsideDeadZone = Vector3.Slerp(
+                    stableDirection,
+                    desiredDirection,
+                    followFraction);
+                if (directionSmoothTime <= 0f)
+                {
+                    stableDirection = directionOutsideDeadZone;
+                }
+                else
+                {
+                    float blend = 1f - Mathf.Exp(-Time.deltaTime / directionSmoothTime);
+                    stableDirection = Vector3.Slerp(
+                        stableDirection,
+                        directionOutsideDeadZone,
+                        blend).normalized;
+                }
+            }
+        }
+
+        transform.position = origin + stableDirection * Mathf.Max(0.1f, targetDistance);
     }
 }
