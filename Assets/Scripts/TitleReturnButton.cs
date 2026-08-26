@@ -10,21 +10,9 @@ public class TitleReturnButton : MonoBehaviour
 
     public void OnClickReturn()
     {
-        // タイトルに戻る際に、これまでに撮影した写真をすべてリセット（メモリ解放）する
-        PhotoGalleryManager.ClearPhotos();
-
-        // VRScreenFaderが存在する場合はフェードアウトして遷移
-        if (VRScreenFader.Instance != null)
-        {
-            VRScreenFader.Instance.FadeOut(fadeDuration, () =>
-            {
-                SceneManager.LoadSceneAsync(titleSceneName);
-            });
-        }
-        else
-        {
-            // フェーダーが無い場合は即座に遷移
-            SceneManager.LoadSceneAsync(titleSceneName);
-        }
+        VRScreenFader.Instance.LoadSceneWithFade(
+            titleSceneName,
+            fadeDuration,
+            PhotoGalleryManager.ClearPhotos);
     }
 }

@@ -2,8 +2,9 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using Unity.XR.CoreUtils;
 
-public class StageDirector : MonoBehaviour
+public class StageDirector : MonoBehaviour, ISceneLoadReady
 {
     // Control options.
     public bool ignoreFastForward = true;
@@ -30,6 +31,9 @@ public class StageDirector : MonoBehaviour
     [Tooltip("全AudioSourceを同じDSP時刻に予約再生するための準備時間です。")]
     [Range(0.02f, 0.25f)] public float scheduledStartLeadTime = 0.08f;
 
+    [Tooltip("ダンス・LipSync・ステージ演出を音楽より何秒先行させるか。現在の調整値は0.2秒です。")]
+    [Range(0.0f, 1.0f)] public float performanceLeadTime = 0.2f;
+
     [Tooltip("音楽を基準にAnimator速度を緩やかに補正します。時刻の強制変更は行いません。")]
     [Range(0.0f, 0.05f)] public float maximumPlaybackSpeedCorrection = 0.02f;
 
@@ -48,37 +52,210 @@ public class StageDirector : MonoBehaviour
     Animator directorAnimator;
     AudioSource masterAudioSource;
     double scheduledMusicDspTime;
+    double scheduledAnimatorPauseDspTime;
     double previousSyncDspTime;
     double animationElapsedTime;
     bool musicStartHandled;
+    bool waitingForAnimatorPause;
     bool waitingForScheduledMusicStart;
     bool performanceIsRunning;
+    bool initializationComplete;
+    string initializationStatus = "StageDirector初期化待機中";
+
+    public bool IsSceneLoadReady => initializationComplete;
+    public string SceneLoadStatus => initializationStatus;
 
     void Awake()
     {
-        // Instantiate the prefabs.
-        musicPlayer = (GameObject)Instantiate(musicPlayerPrefab);
-
-        var cameraRig = (GameObject)Instantiate(mainCameraRigPrefab);
-        mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>();
-        screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>();
-
-        objectsNeedsActivation = new GameObject[prefabsNeedsActivation.Length];
-        for (var i = 0; i < prefabsNeedsActivation.Length; i++)
-            objectsNeedsActivation[i] = (GameObject)Instantiate(prefabsNeedsActivation[i]);
-
-        objectsOnTimeline = new GameObject[prefabsOnTimeline.Length];
-        for (var i = 0; i < prefabsOnTimeline.Length; i++)
-            objectsOnTimeline[i] = (GameObject)Instantiate(prefabsOnTimeline[i]);
-
-        foreach (var p in miscPrefabs) Instantiate(p);
-
         directorAnimator = GetComponent<Animator>();
+        if (directorAnimator != null) directorAnimator.speed = 0f;
+
+        screenOverlays = new ScreenOverlay[0];
+        objectsNeedsActivation = new GameObject[prefabsNeedsActivation != null ? prefabsNeedsActivation.Length : 0];
+        objectsOnTimeline = new GameObject[prefabsOnTimeline != null ? prefabsOnTimeline.Length : 0];
+
+        StartCoroutine(InitializePerformanceRoutine());
+    }
+
+    private IEnumerator InitializePerformanceRoutine()
+    {
+        initializationStatus = "音楽プレイヤーを準備中";
+        if (musicPlayerPrefab != null)
+        {
+            musicPlayer = Instantiate(musicPlayerPrefab);
+            FreezeAnimators(musicPlayer);
+        }
+        yield return null;
+
+        initializationStatus = "XRリグとシーン装備を準備中";
+        GameObject cameraRig = FindOrCreateCameraRig();
+        if (cameraRig != null)
+        {
+            EnsureTestScenePhoneCamera(cameraRig);
+            mainCameraSwitcher = cameraRig.GetComponentInChildren<CameraSwitcher>(true);
+            screenOverlays = cameraRig.GetComponentsInChildren<ScreenOverlay>(true);
+        }
+        yield return null;
+
+        initializationStatus = "ステージ小物を準備中";
+        if (prefabsNeedsActivation != null)
+        {
+            for (int i = 0; i < prefabsNeedsActivation.Length; i++)
+            {
+                if (prefabsNeedsActivation[i] != null)
+                {
+                    objectsNeedsActivation[i] = Instantiate(prefabsNeedsActivation[i]);
+                }
+                yield return null;
+            }
+        }
+
+        initializationStatus = "ダンスとLipSyncを準備中";
+        if (prefabsOnTimeline != null)
+        {
+            for (int i = 0; i < prefabsOnTimeline.Length; i++)
+            {
+                if (prefabsOnTimeline[i] != null)
+                {
+                    objectsOnTimeline[i] = Instantiate(prefabsOnTimeline[i]);
+                    FreezeAnimators(objectsOnTimeline[i]);
+                }
+                yield return null;
+            }
+        }
+
+        initializationStatus = "ステージ演出を準備中";
+        if (miscPrefabs != null)
+        {
+            foreach (GameObject prefab in miscPrefabs)
+            {
+                if (prefab != null)
+                {
+                    Instantiate(prefab);
+                }
+                yield return null;
+            }
+        }
+
         CachePerformanceAnimators();
+
+        initializationStatus = "音源データを準備中";
+        if (musicPlayer != null)
+        {
+            performanceAudioSources.Clear();
+            performanceAudioSources.AddRange(musicPlayer.GetComponentsInChildren<AudioSource>(true));
+            foreach (AudioSource source in performanceAudioSources)
+            {
+                if (source != null && source.clip != null && source.clip.loadState == AudioDataLoadState.Unloaded)
+                {
+                    source.clip.LoadAudioData();
+                }
+            }
+
+            bool audioIsLoading;
+            do
+            {
+                audioIsLoading = false;
+                foreach (AudioSource source in performanceAudioSources)
+                {
+                    if (source != null && source.clip != null && source.clip.loadState == AudioDataLoadState.Loading)
+                    {
+                        audioIsLoading = true;
+                        break;
+                    }
+                }
+                if (audioIsLoading) yield return null;
+            }
+            while (audioIsLoading);
+        }
+
+        // 初回Renderer・Animator更新を黒画面中に済ませる。
+        initializationStatus = "初回描画を安定化中";
+        yield return null;
+        yield return null;
+
+        // Director・ダンス・LipSyncを同じフレームの0秒地点から開始する。
+        if (directorAnimator != null) directorAnimator.speed = 1f;
+        SetPerformanceAnimatorSpeed(1f);
+        initializationComplete = true;
+        initializationStatus = "準備完了";
+        Debug.Log("[StageDirector] 分割初期化が完了しました。パフォーマンスを同一フレームから開始します。");
+    }
+
+    private GameObject FindOrCreateCameraRig()
+    {
+        XROrigin existingOrigin = FindAnyObjectByType<XROrigin>(FindObjectsInactive.Include);
+        if (existingOrigin != null)
+        {
+            Debug.Log($"[StageDirector] 永続XRリグ '{existingOrigin.gameObject.name}' を再利用します。");
+            return existingOrigin.gameObject;
+        }
+
+        if (mainCameraRigPrefab == null) return null;
+
+        GameObject createdRig = Instantiate(mainCameraRigPrefab);
+        if (createdRig.GetComponent<XROriginPersistence>() == null)
+        {
+            createdRig.AddComponent<XROriginPersistence>();
+        }
+        Debug.Log("[StageDirector] XRリグが存在しないためフォールバック生成しました。");
+        return createdRig;
+    }
+
+    private void EnsureTestScenePhoneCamera(GameObject targetRig)
+    {
+        if (targetRig == null || targetRig.GetComponentInChildren<VRPhoneCamera>(true) != null ||
+            mainCameraRigPrefab == null)
+        {
+            return;
+        }
+
+        VRPhoneCamera sourcePhone = mainCameraRigPrefab.GetComponentInChildren<VRPhoneCamera>(true);
+        if (sourcePhone == null) return;
+
+        string parentPath = GetRelativeTransformPath(mainCameraRigPrefab.transform, sourcePhone.transform.parent);
+        Transform targetParent = string.IsNullOrEmpty(parentPath)
+            ? targetRig.transform
+            : targetRig.transform.Find(parentPath);
+
+        if (targetParent == null)
+        {
+            Debug.LogWarning($"[StageDirector] 永続XRリグにスマホの親 '{parentPath}' が見つかりません。");
+            return;
+        }
+
+        GameObject phone = Instantiate(sourcePhone.gameObject, targetParent, false);
+        phone.name = sourcePhone.gameObject.name;
+        phone.SetActive(true);
+        Debug.Log("[StageDirector] TestScene用の右手スマホカメラだけを永続XRリグへ追加しました。");
+    }
+
+    private static string GetRelativeTransformPath(Transform root, Transform target)
+    {
+        if (root == null || target == null || target == root) return string.Empty;
+
+        var parts = new List<string>();
+        Transform current = target;
+        while (current != null && current != root)
+        {
+            parts.Insert(0, current.name);
+            current = current.parent;
+        }
+        return current == root ? string.Join("/", parts.ToArray()) : string.Empty;
+    }
+
+    private static void FreezeAnimators(GameObject root)
+    {
+        if (root == null) return;
+        foreach (Animator animator in root.GetComponentsInChildren<Animator>(true))
+        {
+            animator.speed = 0f;
+        }
     }
 
     void Update()
     {
+        PauseAnimatorsBeforeScheduledMusicStart();
         ResumeAnimatorsAtScheduledMusicStart();
         KeepPerformanceLockedToAudioClock();
 
@@ -101,7 +278,7 @@ public class StageDirector : MonoBehaviour
         #else
             Application.Quit();
         #endif
-        }else if(Input.GetKeyDown(KeyCode.L))
+        }else if(Input.GetKeyDown(KeyCode.L) && objectsOnTimeline != null && objectsOnTimeline.Length > 0 && objectsOnTimeline[0] != null)
         {
             UnityChan.IKLookAt ikla;
             ikla = objectsOnTimeline[0].GetComponent<UnityChan.IKLookAt>();
@@ -146,8 +323,10 @@ public class StageDirector : MonoBehaviour
         }
 
         CachePerformanceAnimators();
-        scheduledMusicDspTime = AudioSettings.dspTime +
-                                Mathf.Max(0.02f, scheduledStartLeadTime);
+        float schedulingLead = Mathf.Max(0.02f, scheduledStartLeadTime);
+        float performanceAdvance = Mathf.Max(0f, performanceLeadTime);
+        scheduledMusicDspTime = AudioSettings.dspTime + schedulingLead + performanceAdvance;
+        scheduledAnimatorPauseDspTime = scheduledMusicDspTime - schedulingLead;
 
         foreach (AudioSource source in performanceAudioSources)
         {
@@ -158,15 +337,35 @@ public class StageDirector : MonoBehaviour
             source.PlayScheduled(scheduledMusicDspTime);
         }
 
-        // ダンス素材とLipSync素材には、音楽開始イベントまで約2秒のプリロールが含まれる。
-        // そのプリロールは維持し、DSP予約再生までの短い待ち時間だけ全体を停止する。
-        if (directorAnimator != null) directorAnimator.speed = 0f;
-        SetPerformanceAnimatorSpeed(0f);
+        // 元から含まれる約2秒のプリロールにInspector指定分を加える。
+        // 指定時間だけ通常再生した後、DSP予約再生までの短い区間だけ停止する。
+        waitingForAnimatorPause = performanceAdvance > 0f;
+        if (!waitingForAnimatorPause)
+        {
+            PauseSynchronizedAnimators();
+        }
         waitingForScheduledMusicStart = true;
 
         Debug.Log(
             $"[PerformanceSync] 音楽をDSP時刻 {scheduledMusicDspTime:F3} に予約。" +
-            $" Animators={performanceAnimators.Count}");
+            $" PerformanceLead={performanceAdvance:F3}秒 Animators={performanceAnimators.Count}");
+    }
+
+    void PauseAnimatorsBeforeScheduledMusicStart()
+    {
+        if (!waitingForAnimatorPause || AudioSettings.dspTime < scheduledAnimatorPauseDspTime)
+        {
+            return;
+        }
+
+        waitingForAnimatorPause = false;
+        PauseSynchronizedAnimators();
+    }
+
+    void PauseSynchronizedAnimators()
+    {
+        if (directorAnimator != null) directorAnimator.speed = 0f;
+        SetPerformanceAnimatorSpeed(0f);
     }
 
     void CachePerformanceAnimators()
@@ -323,13 +522,6 @@ public class StageDirector : MonoBehaviour
 
     public void EndPerformance()
     {
-        if (VRScreenFader.Instance != null)
-        {
-            VRScreenFader.Instance.FadeOut(1.0f, () => SceneManager.LoadSceneAsync("VRPhotoResultTest"));
-        }
-        else
-        {
-            SceneManager.LoadSceneAsync("VRPhotoResultTest");
-        }
+        VRScreenFader.Instance.LoadSceneWithFade("VRPhotoResultTest", 1.0f);
     }
 }

@@ -604,17 +604,7 @@ public class VRPauseMenu : MonoBehaviour
                 }
 
                 ResumeGame();
-                if (VRScreenFader.Instance != null)
-                {
-                    VRScreenFader.Instance.FadeOut(1.0f, () =>
-                    {
-                        SceneManager.LoadSceneAsync("TitleScene");
-                    });
-                }
-                else
-                {
-                    SceneManager.LoadSceneAsync("TitleScene");
-                }
+                VRScreenFader.Instance.LoadSceneWithFade("TitleScene", 1.0f);
             });
         }
 

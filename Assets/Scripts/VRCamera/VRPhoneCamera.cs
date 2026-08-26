@@ -13,6 +13,13 @@ public class VRPhoneCamera : MonoBehaviour
     [Tooltip("カメラがこの角度（度）以上傾いたら横長(Landscape)写真として自動回転して保存します。")]
     [SerializeField] private float landscapeTiltThreshold = 45f;
 
+    [Tooltip("縦横判定の境界でUIが細かく切り替わるのを防ぐ角度です。")]
+    [Range(0f, 15f)]
+    [SerializeField] private float orientationHysteresis = 5f;
+
+    [Tooltip("横向き時にズーム倍率をプレイヤーから正立して読める向きへ回転します。")]
+    [SerializeField] private bool rotateZoomTextInLandscape = true;
+
     [Header("Input Settings")]
     [SerializeField] private InputActionProperty shootAction;
 
@@ -27,6 +34,12 @@ public class VRPhoneCamera : MonoBehaviour
     [Tooltip("Distance from the right edge of the screen")]
     [SerializeField] private float sliderXOffset = -20f;
     [SerializeField] private int zoomTextFontSize = 60;
+
+    [Tooltip("縦向き時のズーム倍率表示位置です。ZoomSliderを基準とした座標です。")]
+    [SerializeField] private Vector2 portraitZoomTextPosition = new Vector2(0f, -20f);
+
+    [Tooltip("横向き時のズーム倍率表示位置です。ZoomSliderを基準とした座標で、Xを小さくするとシークバーの左側へ移動します。")]
+    [SerializeField] private Vector2 landscapeZoomTextPosition = new Vector2(-100f, -20f);
 
     [Header("Effects")]
     [SerializeField] private AudioSource audioSource;
@@ -47,6 +60,9 @@ public class VRPhoneCamera : MonoBehaviour
     private Canvas uiCanvas;
     private UnityEngine.UI.Slider zoomSlider;
     private UnityEngine.UI.Text zoomText;
+    private RectTransform zoomTextRect;
+    private bool isLandscape;
+    private int landscapeDirection;
 
     private void Awake()
     {
@@ -58,6 +74,12 @@ public class VRPhoneCamera : MonoBehaviour
         if (viewfinderCamera != null)
         {
             defaultFOV = viewfinderCamera.fieldOfView;
+            if (viewfinderTexture != null && viewfinderTexture.height > 0)
+            {
+                // RenderTextureとカメラ投影の縦横比を明示的に一致させる。
+                viewfinderCamera.aspect =
+                    viewfinderTexture.width / (float)viewfinderTexture.height;
+            }
         }
 
         SetupZoomUI();
@@ -136,14 +158,15 @@ public class VRPhoneCamera : MonoBehaviour
         outline.effectColor = Color.black;
         outline.effectDistance = new Vector2(2, -2);
         
-        RectTransform textRt = textObj.GetComponent<RectTransform>();
-        textRt.anchorMin = new Vector2(0.5f, 0);
-        textRt.anchorMax = new Vector2(0.5f, 0);
-        textRt.pivot = new Vector2(0.5f, 1);
-        textRt.anchoredPosition = new Vector2(0, -20);
-        textRt.sizeDelta = new Vector2(200, 100);
+        zoomTextRect = textObj.GetComponent<RectTransform>();
+        zoomTextRect.anchorMin = new Vector2(0.5f, 0);
+        zoomTextRect.anchorMax = new Vector2(0.5f, 0);
+        zoomTextRect.pivot = new Vector2(0.5f, 1);
+        zoomTextRect.anchoredPosition = portraitZoomTextPosition;
+        zoomTextRect.sizeDelta = new Vector2(200, 100);
         
         UpdateZoomUI();
+        UpdateOrientationUI(true);
     }
 
     private void OnEnable()
@@ -181,6 +204,50 @@ public class VRPhoneCamera : MonoBehaviour
     private void Update()
     {
         HandleZoom();
+        UpdateOrientationUI(false);
+    }
+
+    private void UpdateOrientationUI(bool force)
+    {
+        if (zoomTextRect == null) return;
+
+        float rollAngle = GetSignedRollAngle();
+        float absoluteRoll = Mathf.Abs(rollAngle);
+        float hysteresis = Mathf.Max(0f, orientationHysteresis);
+        float enterThreshold = Mathf.Clamp(landscapeTiltThreshold + hysteresis, 0f, 89.9f);
+        float exitThreshold = Mathf.Clamp(landscapeTiltThreshold - hysteresis, 0f, 89.9f);
+
+        bool nextLandscape = isLandscape
+            ? absoluteRoll >= exitThreshold && absoluteRoll <= 180f - exitThreshold
+            : absoluteRoll >= enterThreshold && absoluteRoll <= 180f - enterThreshold;
+        int nextDirection = nextLandscape ? (rollAngle >= 0f ? 1 : -1) : 0;
+
+        if (!force && nextLandscape == isLandscape && nextDirection == landscapeDirection)
+        {
+            return;
+        }
+
+        isLandscape = nextLandscape;
+        landscapeDirection = nextDirection;
+
+        zoomTextRect.anchoredPosition = isLandscape
+            ? landscapeZoomTextPosition
+            : portraitZoomTextPosition;
+
+        float textRotation = 0f;
+        if (rotateZoomTextInLandscape && isLandscape)
+        {
+            // 端末のRollをUI側で打ち消し、横持ち中も倍率を正立表示する。
+            textRotation = landscapeDirection > 0 ? -90f : 90f;
+            if (flipZoomUI) textRotation = -textRotation;
+        }
+        zoomTextRect.localRotation = Quaternion.Euler(0f, 0f, textRotation);
+    }
+
+    private float GetSignedRollAngle()
+    {
+        float rollAngle = transform.eulerAngles.z;
+        return rollAngle > 180f ? rollAngle - 360f : rollAngle;
     }
 
     private void HandleZoom()
@@ -288,9 +355,7 @@ public class VRPhoneCamera : MonoBehaviour
         RenderTexture.active = null;
 
         // --- 自動回転ロジック（重力センサー風の傾き検知） ---
-        float zAngle = transform.eulerAngles.z;
-        // 0~360度を -180~180度に変換して扱いやすくする
-        if (zAngle > 180f) zAngle -= 360f;
+        float zAngle = GetSignedRollAngle();
 
         if (zAngle >= landscapeTiltThreshold && zAngle <= (180f - landscapeTiltThreshold))
         {

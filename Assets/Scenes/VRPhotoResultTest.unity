@@ -162,6 +162,9 @@ MonoBehaviour:
   scoreFontSize: 100
   rankFontSize: 300
   detailsFontSize: 60
+  centerDetailFormat: "\u753B\u89D2\u4E2D\u592E: +{0}"
+  gazeDetailFormat: "\u30AB\u30E1\u30E9\u76EE\u7DDA: +{0}"
+  poseDetailFormat: "\u30DD\u30FC\u30BA: +{0}"
   scoreIcon: {fileID: 21300000, guid: 4321de2e41cfc714ea631dbe98da39b5, type: 3}
   scoreLabel: "\u3044\u3044\u306D\uFF01"
   scoreIconSize: {x: 100, y: 100}

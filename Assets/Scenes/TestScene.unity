@@ -438,6 +438,9 @@ MonoBehaviour:
   lookatIntensity: 0.83
   synchronizePerformanceToMusic: 1
   scheduledStartLeadTime: 0.08
+  performanceLeadTime: 0.23000005
+  maximumPlaybackSpeedCorrection: 0.02
+  playbackSpeedCorrectionGain: 0.35
 --- !u!95 &1080986682
 Animator:
   serializedVersion: 7
@@ -571,7 +574,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TestSceneVoiceManager
   modelFolderName: vosk-model-small-ja-0.22
-  customMicrophoneName: ''
+  customMicrophoneName: 
   showRecognitionLog: 1
   constrainRecognitionToCommands: 1
   recognitionGrammarPhrases:
@@ -607,34 +610,42 @@ MonoBehaviour:
     keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u3053\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u898B\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u307F\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u898B\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: LookAt
     keyword: "\u307F\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: Wave
     keyword: "\u624B\u632F\u3063\u3066"
     reactionName: smile2@unitychan
@@ -664,26 +675,32 @@ MonoBehaviour:
     keyword: "\u304B\u308F\u3044\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
+    bodyReactionLayerName: 
   - commandId: Cute
     keyword: "\u6CB3\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
+    bodyReactionLayerName: 
   - commandId: Cute
     keyword: "\u53EF\u611B\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
+    bodyReactionLayerName: 
   - commandId: Cute
     keyword: "\u304B\u308F\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
+    bodyReactionLayerName: 
   - commandId: Cute
     keyword: "\u5DDD\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
+    bodyReactionLayerName: 
   - commandId: Default
     keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan
     bodyReactionName: 
+    bodyReactionLayerName: 
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
     reactionName: default@unitychan
@@ -829,7 +846,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8a9b40a61be347f695d70aef4341e87d, type: 3}
-  m_Name: ''
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VoiceReactionVisualFeedback
   defaultEffectStyle: 1
   defaultLocalOffset: {x: 0, y: 0.25, z: 0.05}

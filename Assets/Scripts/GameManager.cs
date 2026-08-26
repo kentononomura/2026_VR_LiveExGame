@@ -158,7 +158,9 @@ public class GameManager : MonoBehaviour
 
     public void RestartGame()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        VRScreenFader.Instance.LoadSceneWithFade(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
+            0.5f);
     }
 
     public void AddScore(int points, string feedback)

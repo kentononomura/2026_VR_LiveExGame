@@ -8,6 +8,13 @@ public class VRPhotoViewer : MonoBehaviour
     [Header("Default Settings")]
     [SerializeField] private Texture2D noPhotoTexture;
 
+    [Header("Photo Aspect Fit")]
+    [Tooltip("写真を縦横比を維持して表示するShaderです。未設定ならResourcesから自動取得します。")]
+    [SerializeField] private Shader aspectFitShader;
+
+    [Tooltip("写真とPhotoScreenの縦横比が異なる部分に表示する色です。")]
+    [SerializeField] private Color photoBackgroundColor = Color.black;
+
     [Header("VR Score UI Settings")]
     [Tooltip("If the text appears mirrored in VR, check this box.")]
     [SerializeField] private bool flipUIText = false;
@@ -32,6 +39,16 @@ public class VRPhotoViewer : MonoBehaviour
     [SerializeField] private int scoreFontSize = 120;
     [SerializeField] private int rankFontSize = 300;
     [SerializeField] private int detailsFontSize = 60;
+
+    [Header("Score Detail Text")]
+    [Tooltip("中央配置スコアの表示書式です。{0}が実際の得点に置き換わります。")]
+    [SerializeField] private string centerDetailFormat = "Center: +{0}";
+
+    [Tooltip("視線スコアの表示書式です。{0}が実際の得点に置き換わります。")]
+    [SerializeField] private string gazeDetailFormat = "Gaze: +{0}";
+
+    [Tooltip("ポーズスコアの表示書式です。{0}が実際の得点に置き換わります。")]
+    [SerializeField] private string poseDetailFormat = "Pose: +{0}";
 
     [Header("Score Decoration")]
     [Tooltip("カウントアップ数値の左側に表示するアイコンです。未設定の場合はアイコンを表示しません。")]
@@ -95,6 +112,7 @@ public class VRPhotoViewer : MonoBehaviour
     [SerializeField] private AudioClip scoreReachedClip;
 
     private Renderer screenRenderer;
+    private Material photoDisplayMaterial;
     private List<PhotoData> photos;
     private int currentPhotoIndex = 0;
 
@@ -110,7 +128,29 @@ public class VRPhotoViewer : MonoBehaviour
     private void Awake()
     {
         screenRenderer = GetComponent<Renderer>();
+        SetupPhotoDisplayMaterial();
         SetupVRUI();
+    }
+
+    private void SetupPhotoDisplayMaterial()
+    {
+        if (screenRenderer == null) return;
+
+        Shader shader = aspectFitShader;
+        if (shader == null) shader = Resources.Load<Shader>("PhotoAspectFit");
+        if (shader == null) shader = Shader.Find("PhotoViewer/AspectFit");
+        if (shader == null)
+        {
+            Debug.LogError("VRPhotoViewer: PhotoAspectFit Shaderを読み込めません。従来表示へ戻します。");
+            return;
+        }
+
+        photoDisplayMaterial = new Material(shader)
+        {
+            name = "PhotoScreen Aspect Fit (Runtime)"
+        };
+        photoDisplayMaterial.SetColor("_BackgroundColor", photoBackgroundColor);
+        screenRenderer.material = photoDisplayMaterial;
     }
 
     private void SetupVRUI()
@@ -364,6 +404,15 @@ public class VRPhotoViewer : MonoBehaviour
         }
     }
 
+    private void OnDestroy()
+    {
+        if (photoDisplayMaterial != null)
+        {
+            Destroy(photoDisplayMaterial);
+            photoDisplayMaterial = null;
+        }
+    }
+
     private void OnNextPressed(InputAction.CallbackContext context)
     {
         if (VRPauseMenu.IsGamePaused()) return;
@@ -429,9 +478,9 @@ public class VRPhotoViewer : MonoBehaviour
                 scoreCountUpUI.PlayCountUp(displayedLikeCount);
                 
                 // Set the breakdown text
-                vrDetailsText.text = $"Center: +{p.CenterBonus}\n" +
-                                     $"Gaze: +{p.GazeBonus}\n" +
-                                     $"Pose: +{p.PoseBonus}";
+                vrDetailsText.text = FormatScoreDetail(centerDetailFormat, p.CenterBonus, "Center") + "\n" +
+                                     FormatScoreDetail(gazeDetailFormat, p.GazeBonus, "Gaze") + "\n" +
+                                     FormatScoreDetail(poseDetailFormat, p.PoseBonus, "Pose");
             }
             else if (scoreCanvas != null)
             {
@@ -446,8 +495,53 @@ public class VRPhotoViewer : MonoBehaviour
         if (textureToApply != null)
         {
             // Apply to both URP standard (_BaseMap) and legacy shader (_MainTex) slots
-            screenRenderer.material.SetTexture("_BaseMap", textureToApply);
-            screenRenderer.material.SetTexture("_MainTex", textureToApply);
+            Material displayMaterial = photoDisplayMaterial != null
+                ? photoDisplayMaterial
+                : screenRenderer.material;
+
+            if (displayMaterial.HasProperty("_BaseMap"))
+                displayMaterial.SetTexture("_BaseMap", textureToApply);
+            if (displayMaterial.HasProperty("_MainTex"))
+                displayMaterial.SetTexture("_MainTex", textureToApply);
+            if (displayMaterial.HasProperty("_PhotoAspect"))
+            {
+                displayMaterial.SetFloat(
+                    "_PhotoAspect",
+                    textureToApply.width / (float)Mathf.Max(1, textureToApply.height));
+            }
+            if (displayMaterial.HasProperty("_ScreenAspect"))
+                displayMaterial.SetFloat("_ScreenAspect", CalculatePhotoScreenAspect());
+            if (displayMaterial.HasProperty("_BackgroundColor"))
+                displayMaterial.SetColor("_BackgroundColor", photoBackgroundColor);
+        }
+    }
+
+    private float CalculatePhotoScreenAspect()
+    {
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        Vector3 meshSize = meshFilter != null && meshFilter.sharedMesh != null
+            ? meshFilter.sharedMesh.bounds.size
+            : Vector3.one;
+        Vector3 worldScale = transform.lossyScale;
+        float width = Mathf.Abs(meshSize.x * worldScale.x);
+        float height = Mathf.Abs(meshSize.y * worldScale.y);
+        return width / Mathf.Max(0.0001f, height);
+    }
+
+    private static string FormatScoreDetail(string format, int score, string fallbackLabel)
+    {
+        if (string.IsNullOrEmpty(format))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return string.Format(format, score);
+        }
+        catch (System.FormatException)
+        {
+            return $"{fallbackLabel}: +{score}";
         }
     }
 

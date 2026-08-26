@@ -449,17 +449,7 @@ public class TitleVoiceManager : MonoBehaviour
         isTransitioning = true;
 
         Debug.Log($"{targetSceneName} をロード中...");
-        if (VRScreenFader.Instance != null)
-        {
-            VRScreenFader.Instance.FadeOut(1.0f, () => 
-            {
-                SceneManager.LoadSceneAsync(targetSceneName);
-            });
-        }
-        else
-        {
-            SceneManager.LoadSceneAsync(targetSceneName);
-        }
+        VRScreenFader.Instance.LoadSceneWithFade(targetSceneName, 1.0f);
     }
 
     void OnDestroy()

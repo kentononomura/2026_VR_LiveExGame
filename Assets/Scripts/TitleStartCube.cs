@@ -30,8 +30,7 @@ public class TitleStartCube : MonoBehaviour
             }
             else
             {
-                // フォールバック（直ロード）
-                SceneManager.LoadSceneAsync(targetSceneName);
+                VRScreenFader.Instance.LoadSceneWithFade(targetSceneName, 1.0f);
             }
         }
     }

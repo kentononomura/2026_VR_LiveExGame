@@ -36,17 +36,6 @@ public class VRSceneTransitionTrigger : MonoBehaviour
         if (isTransitioning) return;
         isTransitioning = true;
 
-        if (VRScreenFader.Instance != null)
-        {
-            VRScreenFader.Instance.FadeOut(fadeDuration, () =>
-            {
-                SceneManager.LoadSceneAsync(targetSceneName);
-            });
-        }
-        else
-        {
-            // Fallback if fader is missing in scene
-            SceneManager.LoadSceneAsync(targetSceneName);
-        }
+        VRScreenFader.Instance.LoadSceneWithFade(targetSceneName, fadeDuration);
     }
 }

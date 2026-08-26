@@ -892,12 +892,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5716543905725d489c2b7c83f616832, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PenlightGaugeController
-  saber: {fileID: 0}
+  saber: {fileID: 4171791267845194706}
   meterFillImage: {fileID: 8542158547883148347}
-  maxGauge: 100
-  gaugeDecreaseRate: 3
+  maxGauge: 150
+  gaugeDecreaseRate: 5
+  gaugeGainMode: 0
+  swingAmplitudeMode: 0
+  minimumSwingAngle: 40
+  fullSwingAngle: 135
+  minimumSwingDistance: 0.5
+  fullSwingDistance: 1
+  gaugePerFullSwing: 10
+  reversalSensitivity: 0.1
+  stationaryResetDelay: 0.2
+  rotationNoiseDegrees: 0.15
+  positionNoiseDistance: 0.0005
+  trackingJumpDistance: 0.5
   shakeThreshold: 1.5
   gaugePerShake: 15
+  level1Threshold: 40
+  level2Threshold: 80
+  level3Threshold: 120
   levelColors:
   - {r: 1, g: 1, b: 1, a: 1}
   - {r: 0, g: 0, b: 1, a: 1}
@@ -1310,6 +1325,8 @@ MonoBehaviour:
   viewfinderTexture: {fileID: 8400000, guid: dcb4f4f2b405d404985096e88fd4a8b1, type: 2}
   screenRenderer: {fileID: 8648708758751704452}
   landscapeTiltThreshold: 45
+  orientationHysteresis: 5
+  rotateZoomTextInLandscape: 1
   shootAction:
     m_UseReference: 0
     m_Action:
@@ -1336,6 +1353,8 @@ MonoBehaviour:
   sliderWidth: 20
   sliderXOffset: -80
   zoomTextFontSize: 60
+  portraitZoomTextPosition: {x: 0, y: -43.5}
+  landscapeZoomTextPosition: {x: 20, y: -105}
   audioSource: {fileID: 4249944991151373358}
   shutterSound: {fileID: 8300000, guid: 3f36aaa772a2e0342986fddda6acdd4a, type: 3}
   flashMaterial: {fileID: 2100000, guid: a1dde97089ee9fd44b21cc031ed48de4, type: 2}
@@ -2724,12 +2743,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5716543905725d489c2b7c83f616832, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PenlightGaugeController
-  saber: {fileID: 0}
+  saber: {fileID: 12251396341366669}
   meterFillImage: {fileID: 4196297627605545538}
-  maxGauge: 100
-  gaugeDecreaseRate: 3
+  maxGauge: 150
+  gaugeDecreaseRate: 5
+  gaugeGainMode: 0
+  swingAmplitudeMode: 0
+  minimumSwingAngle: 40
+  fullSwingAngle: 135
+  minimumSwingDistance: 0.5
+  fullSwingDistance: 1
+  gaugePerFullSwing: 10
+  reversalSensitivity: 0.1
+  stationaryResetDelay: 0.2
+  rotationNoiseDegrees: 0.15
+  positionNoiseDistance: 0.0005
+  trackingJumpDistance: 0.5
   shakeThreshold: 1.5
   gaugePerShake: 15
+  level1Threshold: 40
+  level2Threshold: 80
+  level3Threshold: 120
   levelColors:
   - {r: 1, g: 1, b: 1, a: 1}
   - {r: 0, g: 0, b: 1, a: 1}

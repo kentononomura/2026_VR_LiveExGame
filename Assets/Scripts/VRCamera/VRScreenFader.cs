@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class VRScreenFader : MonoBehaviour
@@ -23,6 +25,10 @@ public class VRScreenFader : MonoBehaviour
     private Canvas fadeCanvas;
     private Image fadeImage;
     private bool isFading = false;
+    private bool isSceneTransitioning;
+    private bool managedSceneLoadInProgress;
+
+    public bool IsSceneTransitioning => isSceneTransitioning;
 
     private void Awake()
     {
@@ -60,11 +66,15 @@ public class VRScreenFader : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // 新しいシーンがロードされたら、古いフェード状態を完全にリセットして強制的にフェードインを開始する
-        StopAllCoroutines();
-        isFading = false;
+        // 一元管理された遷移中は、ロードコルーチン自身が準備完了後にフェードインする。
+        // ここでStopAllCoroutinesするとロード処理まで停止するため、管理外ロード時だけ従来処理を行う。
+        if (!managedSceneLoadInProgress)
+        {
+            StopAllCoroutines();
+            isFading = false;
+        }
         
         if (Camera.main != null)
         {
@@ -75,10 +85,133 @@ public class VRScreenFader : MonoBehaviour
         // シーンロード直後にトラッキングポーズをリセットし、カメラの再取得を強制する
         StartCoroutine(ResetTrackingRoutine());
         
-        if (gameObject.activeInHierarchy)
+        if (!managedSceneLoadInProgress && gameObject.activeInHierarchy)
         {
-            // 確実にフェードインを走らせるため直接コルーチンを起動
-            StartCoroutine(FadeRoutine(1f, 0f, 1.0f, null));
+            if (fadeCanvas != null) fadeCanvas.gameObject.SetActive(true);
+            if (fadeImage != null) fadeImage.color = new Color(0f, 0f, 0f, 1f);
+            StartCoroutine(FadeInWhenSceneReady(scene, 1.0f));
+        }
+    }
+
+    /// <summary>
+    /// 黒フェード中に非同期ロードとシーン初期化を完了し、安定フレーム後にフェードインします。
+    /// </summary>
+    public void LoadSceneWithFade(
+        string sceneName,
+        float fadeDuration = 1.0f,
+        System.Action beforeLoad = null)
+    {
+        if (isSceneTransitioning || string.IsNullOrEmpty(sceneName)) return;
+        StartCoroutine(LoadSceneRoutine(sceneName, Mathf.Max(0.01f, fadeDuration), beforeLoad));
+    }
+
+    private IEnumerator LoadSceneRoutine(string sceneName, float fadeDuration, System.Action beforeLoad)
+    {
+        isSceneTransitioning = true;
+        managedSceneLoadInProgress = true;
+        float transitionStartedAt = Time.realtimeSinceStartup;
+        Debug.Log($"[SceneLoader] '{sceneName}' への遷移を開始します。");
+
+        yield return StartCoroutine(FadeRoutine(0f, 1f, fadeDuration, null));
+        beforeLoad?.Invoke();
+
+        ThreadPriority previousPriority = Application.backgroundLoadingPriority;
+        Application.backgroundLoadingPriority = ThreadPriority.Low;
+
+        AsyncOperation loadOperation = SceneManager.LoadSceneAsync(sceneName);
+        if (loadOperation == null)
+        {
+            Debug.LogError($"[VRScreenFader] シーン '{sceneName}' のロードを開始できませんでした。");
+            Application.backgroundLoadingPriority = previousPriority;
+            managedSceneLoadInProgress = false;
+            isSceneTransitioning = false;
+            yield return StartCoroutine(FadeRoutine(1f, 0f, fadeDuration, null));
+            yield break;
+        }
+
+        // 読み込みを90%まで進め、黒画面が確実に描画された状態でActivationを行う。
+        loadOperation.allowSceneActivation = false;
+        while (loadOperation.progress < 0.9f)
+        {
+            yield return null;
+        }
+
+        yield return null;
+        loadOperation.allowSceneActivation = true;
+        while (!loadOperation.isDone)
+        {
+            yield return null;
+        }
+
+        Debug.Log($"[SceneLoader] '{sceneName}' のActivation完了: {Time.realtimeSinceStartup - transitionStartedAt:F2}秒");
+
+        Application.backgroundLoadingPriority = previousPriority;
+
+        Scene loadedScene = SceneManager.GetSceneByName(sceneName);
+        yield return StartCoroutine(WaitForSceneReady(loadedScene));
+
+        // XR Compositorへ安定した黒フレームを数回提出してから表示を戻す。
+        yield return StartCoroutine(WaitForStableFrames());
+
+        yield return StartCoroutine(FadeRoutine(1f, 0f, fadeDuration, null));
+        managedSceneLoadInProgress = false;
+        isSceneTransitioning = false;
+        Debug.Log($"[SceneLoader] '{sceneName}' の準備・フェードイン完了: {Time.realtimeSinceStartup - transitionStartedAt:F2}秒");
+    }
+
+    private IEnumerator FadeInWhenSceneReady(Scene scene, float duration)
+    {
+        yield return StartCoroutine(WaitForSceneReady(scene));
+        yield return StartCoroutine(WaitForStableFrames());
+        yield return StartCoroutine(FadeRoutine(1f, 0f, duration, null));
+    }
+
+    private IEnumerator WaitForStableFrames()
+    {
+        const int requiredStableFrames = 3;
+        const float maximumStableFrameTime = 0.05f;
+        float timeoutAt = Time.realtimeSinceStartup + 3f;
+        int stableFrames = 0;
+
+        while (stableFrames < requiredStableFrames && Time.realtimeSinceStartup < timeoutAt)
+        {
+            yield return null;
+            stableFrames = Time.unscaledDeltaTime <= maximumStableFrameTime
+                ? stableFrames + 1
+                : 0;
+        }
+    }
+
+    private IEnumerator WaitForSceneReady(Scene scene)
+    {
+        // Startと最初のCoroutineが走るまで1フレーム待ってからReady providerを収集する。
+        yield return null;
+
+        var providers = new List<ISceneLoadReady>();
+        MonoBehaviour[] behaviours = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include);
+        foreach (MonoBehaviour behaviour in behaviours)
+        {
+            if (behaviour != null && behaviour.gameObject.scene == scene && behaviour is ISceneLoadReady provider)
+            {
+                providers.Add(provider);
+            }
+        }
+
+        float timeoutAt = Time.realtimeSinceStartup + 30f;
+        while (providers.Exists(provider => provider != null && !provider.IsSceneLoadReady))
+        {
+            if (Time.realtimeSinceStartup >= timeoutAt)
+            {
+                foreach (ISceneLoadReady provider in providers)
+                {
+                    if (provider != null && !provider.IsSceneLoadReady)
+                    {
+                        Debug.LogWarning($"[VRScreenFader] シーン準備待機がタイムアウトしました: {provider.SceneLoadStatus}");
+                    }
+                }
+                yield break;
+            }
+            yield return null;
         }
     }
 
@@ -166,7 +299,8 @@ public class VRScreenFader : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            // ポーズ中やTime.timeScale変更中でも、シーン遷移のフェードは停止させない。
+            elapsed += Time.unscaledDeltaTime;
             float alpha = Mathf.Lerp(startAlpha, endAlpha, elapsed / duration);
             if (fadeImage != null)
             {

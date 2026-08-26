@@ -104,7 +104,7 @@ public class TestSceneVoiceManager : MonoBehaviour
     public float lookAtDuration = 3f;
     public float rigBlendSpeed = 5f;
 
-    [Tooltip("Legacyは現在までの上半身追従、Coordinatedは全身の水平旋回＋頭部追従を使用します。Play開始後の変更は反映されません。")]
+    [Tooltip("Legacyは従来の上半身追従、CoordinatedはRoot Motionを保護した安定化上半身追従を使用します。Play開始後の変更は反映されません。")]
     [SerializeField] private VoiceReactionPresentationMode presentationMode =
         VoiceReactionPresentationMode.Coordinated;
 
@@ -120,14 +120,17 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Min(0.01f)]
     [SerializeField] private float bodyReturnBlendDuration = 0.5f;
 
-    [Header("Coordinated Character Facing")]
-    [Tooltip("プレイヤー方向へ向く旋回の滑らかさです。値が大きいほどゆっくり向きます。")]
+    // 旧バージョンのシーン保存値との互換性を維持するため残す。
+    // Root Motionを曲げる原因になるため、現在の実装では使用しない。
+#pragma warning disable 0414
+    [SerializeField, HideInInspector]
     [Range(0.05f, 1f)]
-    [SerializeField] private float characterFacingSmoothTime = 0.3f;
+    private float characterFacingSmoothTime = 0.3f;
 
-    [Tooltip("モデル正面とTransform.forwardがずれている場合の補正角度です。通常は0です。")]
+    [SerializeField, HideInInspector]
     [Range(-180f, 180f)]
-    [SerializeField] private float characterFacingYawOffset = 0f;
+    private float characterFacingYawOffset = 0f;
+#pragma warning restore 0414
 
     [Tooltip("VRカメラ位置の微細な揺れを目線ターゲットへ反映しにくくする時間（秒）です。")]
     [Range(0f, 0.5f)]
@@ -138,10 +141,10 @@ public class TestSceneVoiceManager : MonoBehaviour
     [SerializeField] private float faceReactionDuration = 3f;
 
     [Header("Upper Body Look At")]
-    [Tooltip("Legacy系の目線制御で胸・首もプレイヤーへ向けます。Coordinatedでは上半身の競合を避け、頭だけを追従させます。")]
+    [Tooltip("胸上部・首・頭をプレイヤーへ向けます。キャラクター本体と足元は回転させません。")]
     [SerializeField] private bool enableUpperBodyLookAt = true;
 
-    [Tooltip("Legacyは従来の5ボーン制御、Stabilizedは安定化した方向へ向けます。Coordinatedとの組み合わせではHeadだけを使用します。変更後はPlayし直してください。")]
+    [Tooltip("Legacyは従来の5ボーン制御、StabilizedはVRトラッキングの微細な揺れを除去して向けます。変更後はPlayし直してください。")]
     [SerializeField] private VoiceLookAtMode lookAtMode = VoiceLookAtMode.Stabilized;
 
     [Header("Stabilized Look At")]
@@ -161,10 +164,16 @@ public class TestSceneVoiceManager : MonoBehaviour
     [SerializeField] private float stabilizedUpperChestWeight = 0.3f;
 
     [Range(0f, 1f)]
+    [SerializeField] private float stabilizedNeckWeight = 0.2f;
+
+    [Range(0f, 1f)]
     [SerializeField] private float stabilizedHeadWeight = 0.65f;
 
     [Range(0f, 90f)]
     [SerializeField] private float stabilizedUpperChestMaxAngle = 25f;
+
+    [Range(0f, 90f)]
+    [SerializeField] private float stabilizedNeckMaxAngle = 30f;
 
     [Range(0f, 120f)]
     [SerializeField] private float stabilizedHeadMaxAngle = 50f;
@@ -682,7 +691,6 @@ public class TestSceneVoiceManager : MonoBehaviour
     private Coroutine faceReactionCoroutine;
     private Coroutine lookAtCoroutine;
     private Coroutine rigBlendCoroutine;
-    private VoiceReactionFacingController facingController;
     private int activeBodyLayerIndex = -1;
 
     private void TrySetupUnityChan()
@@ -703,16 +711,6 @@ public class TestSceneVoiceManager : MonoBehaviour
             }
             SetupAnimationRigging(unityChanObj);
 
-            if (presentationMode == VoiceReactionPresentationMode.Coordinated)
-            {
-                facingController = unityChanObj.GetComponent<VoiceReactionFacingController>();
-                if (facingController == null)
-                {
-                    facingController = unityChanObj.AddComponent<VoiceReactionFacingController>();
-                }
-                facingController.smoothTime = characterFacingSmoothTime;
-                facingController.modelForwardYawOffset = characterFacingYawOffset;
-            }
         }
     }
 
@@ -776,11 +774,11 @@ public class TestSceneVoiceManager : MonoBehaviour
             aimTarget.transform.position = mainCam.transform.position;
         }
 
-        // 4. Coordinatedではルートが水平に向くため、Rigは頭だけを補助する。
-        // Legacy presentationでは、直前までのStabilized（胸上部＋頭）を保持する。
+        // 4. Root Motionの進行方向を変えないよう、キャラクタールートは回さない。
+        //    安定化した胸上部・首・頭のAimだけでプレイヤーを見る。
         if (lookAtMode == VoiceLookAtMode.Stabilized)
         {
-            if (presentationMode == VoiceReactionPresentationMode.Legacy && enableUpperBodyLookAt)
+            if (enableUpperBodyLookAt)
             {
                 HumanBodyBones upperBodyBone =
                     targetAnimator.GetBoneTransform(HumanBodyBones.UpperChest) != null
@@ -790,6 +788,11 @@ public class TestSceneVoiceManager : MonoBehaviour
                     rigObj.transform, aimTarget.transform, upperBodyBone,
                     "StabilizedUpperChestAimConstraint", stabilizedUpperChestWeight,
                     stabilizedUpperChestMaxAngle, false);
+
+                AddUpperBodyAimConstraint(
+                    rigObj.transform, aimTarget.transform, HumanBodyBones.Neck,
+                    "StabilizedNeckAimConstraint", stabilizedNeckWeight,
+                    stabilizedNeckMaxAngle, false);
             }
 
             AddUpperBodyAimConstraint(
@@ -1029,16 +1032,6 @@ public class TestSceneVoiceManager : MonoBehaviour
 
         if (reactionStarted)
         {
-            if (presentationMode == VoiceReactionPresentationMode.Coordinated &&
-                facingController != null)
-            {
-                Transform playerHead = ResolvePlayerTransform();
-                float facingDuration = Mathf.Max(
-                    lookAtDuration,
-                    string.IsNullOrEmpty(kr.bodyReactionName) ? 0f : bodyReactionDuration);
-                facingController.FaceTarget(playerHead, facingDuration);
-            }
-
             if (visualFeedback == null)
             {
                 visualFeedback = GetComponent<VoiceReactionVisualFeedback>();
@@ -1418,98 +1411,6 @@ public class TestSceneVoiceManager : MonoBehaviour
         {
             VoskPcmUtility.Return(pendingCommand.audioData);
         }
-    }
-}
-
-/// <summary>
-/// 振付が設定したルート回転を壊さず、音声リアクション中だけプレイヤー方向のYawを加算します。
-/// 外部からルート回転が更新されたフレームは、その新しい回転を基準として追従し直します。
-/// </summary>
-public class VoiceReactionFacingController : MonoBehaviour
-{
-    [Range(0.05f, 1f)] public float smoothTime = 0.3f;
-    [Range(-180f, 180f)] public float modelForwardYawOffset;
-
-    private Transform target;
-    private float activeTimeRemaining;
-    private float currentYawOffset;
-    private float yawVelocity;
-    private Quaternion lastBaseRotation;
-    private Quaternion lastAppliedRotation;
-    private bool hasAppliedRotation;
-
-    public void FaceTarget(Transform newTarget, float duration)
-    {
-        if (newTarget == null) return;
-
-        target = newTarget;
-        activeTimeRemaining = Mathf.Max(0f, duration);
-    }
-
-    void LateUpdate()
-    {
-        float deltaTime = Time.deltaTime;
-        if (deltaTime <= 0f) return;
-
-        Quaternion observedRotation = transform.rotation;
-        Quaternion baseRotation;
-        if (hasAppliedRotation && Quaternion.Angle(observedRotation, lastAppliedRotation) < 0.001f)
-        {
-            baseRotation = lastBaseRotation;
-        }
-        else
-        {
-            // Choreographyなどがこのフレームに回転を更新した場合は、それを新しい基準にする。
-            baseRotation = observedRotation;
-        }
-
-        bool isActive = target != null && activeTimeRemaining > 0f;
-        if (isActive)
-        {
-            activeTimeRemaining = Mathf.Max(0f, activeTimeRemaining - deltaTime);
-        }
-
-        float desiredYawOffset = 0f;
-        if (isActive)
-        {
-            Vector3 toTarget = Vector3.ProjectOnPlane(target.position - transform.position, Vector3.up);
-            Vector3 modelForward = Vector3.ProjectOnPlane(
-                Quaternion.AngleAxis(modelForwardYawOffset, Vector3.up) *
-                (baseRotation * Vector3.forward),
-                Vector3.up);
-            if (toTarget.sqrMagnitude > 0.0001f && modelForward.sqrMagnitude > 0.0001f)
-            {
-                desiredYawOffset = Vector3.SignedAngle(
-                    modelForward.normalized,
-                    toTarget.normalized,
-                    Vector3.up);
-            }
-        }
-
-        currentYawOffset = Mathf.SmoothDampAngle(
-            currentYawOffset,
-            desiredYawOffset,
-            ref yawVelocity,
-            Mathf.Max(0.05f, smoothTime),
-            Mathf.Infinity,
-            deltaTime);
-
-        if (!isActive && Mathf.Abs(Mathf.DeltaAngle(currentYawOffset, 0f)) < 0.05f &&
-            Mathf.Abs(yawVelocity) < 0.05f)
-        {
-            currentYawOffset = 0f;
-            yawVelocity = 0f;
-            transform.rotation = baseRotation;
-            hasAppliedRotation = false;
-            return;
-        }
-
-        Quaternion appliedRotation =
-            Quaternion.AngleAxis(currentYawOffset, Vector3.up) * baseRotation;
-        transform.rotation = appliedRotation;
-        lastBaseRotation = baseRotation;
-        lastAppliedRotation = appliedRotation;
-        hasAppliedRotation = true;
     }
 }
 

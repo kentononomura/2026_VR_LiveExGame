@@ -113,6 +113,8 @@ public class XROriginPersistence : MonoBehaviour
             MigrateSceneSpecificChildren(xrOrigin.gameObject);
 
             Debug.Log($"[XROriginPersistence] 重複する XROrigin '{xrOrigin.gameObject.name}' を破棄し、その座標({targetPos})を引き継ぎます。");
+            // Destroyはフレーム末まで遅延するため、先に無効化して重複カメラ・入力・描画を即座に止める。
+            xrOrigin.gameObject.SetActive(false);
             Destroy(xrOrigin.gameObject);
         }
 
@@ -265,6 +267,8 @@ public class XROriginPersistence : MonoBehaviour
                 
                 SetPhoneCameraActive(false);
                 SetRayInteractorsActive(true); // タイトルもUI操作があるので一応有効に
+                // TestSceneでは右手ペンライトを隠すため、タイトルへ戻った時は両手とも復元する。
+                RestoreSabers();
                 
                 Debug.Log($"[XROriginPersistence] TitleScene: Position=({transform.position})");
                 break;

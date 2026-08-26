@@ -8,34 +8,15 @@ public class SceneTransitionManager : MonoBehaviour
 
     public void LoadResultScene()
     {
-        if (VRScreenFader.Instance != null)
-        {
-            VRScreenFader.Instance.FadeOut(0.5f, () =>
-            {
-                SceneManager.LoadSceneAsync(resultSceneName);
-            });
-        }
-        else
-        {
-            SceneManager.LoadSceneAsync(resultSceneName);
-        }
+        VRScreenFader.Instance.LoadSceneWithFade(resultSceneName, 0.5f);
     }
 
     public void LoadPlaySceneAndClear()
     {
-        if (VRScreenFader.Instance != null)
-        {
-            VRScreenFader.Instance.FadeOut(0.5f, () =>
-            {
-                PhotoGalleryManager.ClearPhotos();
-                SceneManager.LoadSceneAsync(playSceneName);
-            });
-        }
-        else
-        {
-            PhotoGalleryManager.ClearPhotos();
-            SceneManager.LoadSceneAsync(playSceneName);
-        }
+        VRScreenFader.Instance.LoadSceneWithFade(
+            playSceneName,
+            0.5f,
+            PhotoGalleryManager.ClearPhotos);
     }
 
     private void Update()
