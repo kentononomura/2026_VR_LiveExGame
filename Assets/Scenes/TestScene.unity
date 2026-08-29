@@ -651,51 +651,71 @@ MonoBehaviour:
     reactionName: smile2@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: Wave
     keyword: "\u624B\u3092\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: Wave
     keyword: "\u3066\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: Wave
     keyword: "\u632F\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: Wave
     keyword: "\u3075\u3063\u3066"
     reactionName: smile2@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: Cute
     keyword: "\u304B\u308F\u3044\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: 0.875
+    bodyReturnBlendDuration: 0.9
   - commandId: Cute
     keyword: "\u6CB3\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: 0.875
+    bodyReturnBlendDuration: 0.9
   - commandId: Cute
     keyword: "\u53EF\u611B\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: 0.875
+    bodyReturnBlendDuration: 0.9
   - commandId: Cute
     keyword: "\u304B\u308F\u3044"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: 0.875
+    bodyReturnBlendDuration: 0.9
   - commandId: Cute
     keyword: "\u5DDD\u4E95"
     reactionName: smile3@unitychan
     bodyReactionName: Kiss
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: 0.875
+    bodyReturnBlendDuration: 0.9
   - commandId: Default
     keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan
@@ -706,16 +726,22 @@ MonoBehaviour:
     reactionName: default@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u30C6\u30A3\u30FC\u3061\u3083\u3093"
     reactionName: default@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u3061\u3083\u3093"
     reactionName: default@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
+    bodyReturnStartNormalizedTime: 0.87
+    bodyReturnBlendDuration: 0.7
   enableFuzzyMatching: 1
   partialSimilarityThreshold: 0.8
   finalSimilarityThreshold: 0.7
@@ -739,11 +765,17 @@ MonoBehaviour:
   stabilizedDirectionSmoothTime: 0.18
   stabilizedDirectionDeadZone: 1.5
   stabilizedTargetDistance: 2
-  stabilizedUpperChestWeight: 0.3
-  stabilizedHeadWeight: 0.65
-  stabilizedUpperChestMaxAngle: 25
+  stabilizedUpperChestWeight: 0.12
+  stabilizedHeadWeight: 0.55
+  stabilizedUpperChestMaxAngle: 40
   stabilizedHeadMaxAngle: 50
-  stabilizedRigBlendSpeed: 3.33
+  stabilizedRigBlendInDuration: 0.4
+  stabilizedRigBlendOutDuration: 0.7
+  stabilizedMaxTargetYaw: 60
+  stabilizedMaxTargetPitch: 25
+  eyeContactBlendInDuration: 0.35
+  eyeContactBlendOutDuration: 0.65
+  eyeContactClampWeight: 0.65
   spineLookWeight: 0.1
   chestLookWeight: 0.15
   upperChestLookWeight: 0.25

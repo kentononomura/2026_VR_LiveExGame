@@ -62,8 +62,8 @@ public class TestSceneVoiceManager : MonoBehaviour
     public List<KeywordReaction> keywordReactions = new List<KeywordReaction>
     {
         new KeywordReaction { commandId = "LookAt", keyword = "こっちむいて", reactionName = "smile1@unitychan", bodyReactionName = "" },
-        new KeywordReaction { commandId = "Wave", keyword = "手振って", reactionName = "smile2@unitychan", bodyReactionName = "Waving", bodyReactionLayerName = "ArmReactionLayer" },
-        new KeywordReaction { commandId = "Cute", keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss" },
+        new KeywordReaction { commandId = "Wave", keyword = "手振って", reactionName = "smile2@unitychan", bodyReactionName = "Waving", bodyReactionLayerName = "ArmReactionLayer", bodyReturnStartNormalizedTime = 0.87f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "Cute", keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss", bodyReturnStartNormalizedTime = 0.875f, bodyReturnBlendDuration = 0.9f },
         new KeywordReaction { commandId = "Default", keyword = "デフォルト", reactionName = "default@unitychan", bodyReactionName = "" }
     };
 
@@ -161,26 +161,45 @@ public class TestSceneVoiceManager : MonoBehaviour
     [SerializeField] private float stabilizedTargetDistance = 2f;
 
     [Range(0f, 1f)]
-    [SerializeField] private float stabilizedUpperChestWeight = 0.3f;
+    [SerializeField] private float stabilizedUpperChestWeight = 0.12f;
 
     [Range(0f, 1f)]
-    [SerializeField] private float stabilizedNeckWeight = 0.2f;
-
-    [Range(0f, 1f)]
-    [SerializeField] private float stabilizedHeadWeight = 0.65f;
+    [SerializeField] private float stabilizedHeadWeight = 0.55f;
 
     [Range(0f, 90f)]
-    [SerializeField] private float stabilizedUpperChestMaxAngle = 25f;
-
-    [Range(0f, 90f)]
-    [SerializeField] private float stabilizedNeckMaxAngle = 30f;
+    [SerializeField] private float stabilizedUpperChestMaxAngle = 40f;
 
     [Range(0f, 120f)]
     [SerializeField] private float stabilizedHeadMaxAngle = 50f;
 
-    [Tooltip("StabilizedモードでRig Weightを0から1へ変化させる速さです。3.33で約0.3秒です。")]
+    [Tooltip("プレイヤーを見始めるブレンド時間です。")]
     [Min(0.01f)]
-    [SerializeField] private float stabilizedRigBlendSpeed = 3.33f;
+    [SerializeField] private float stabilizedRigBlendInDuration = 0.4f;
+
+    [Tooltip("ダンスの姿勢へ目線制御を戻すブレンド時間です。")]
+    [Min(0.01f)]
+    [SerializeField] private float stabilizedRigBlendOutDuration = 0.7f;
+
+    [Tooltip("キャラクター正面から目線ターゲットを許可する左右の最大角度です。後方のターゲットによるAimの反転を防ぎます。")]
+    [Range(0f, 89f)]
+    [SerializeField] private float stabilizedMaxTargetYaw = 60f;
+
+    [Tooltip("目線ターゲットを許可する上下の最大角度です。")]
+    [Range(0f, 60f)]
+    [SerializeField] private float stabilizedMaxTargetPitch = 25f;
+
+    [Header("Eye Contact")]
+    [Tooltip("両目がプレイヤーを見始めるブレンド時間です。")]
+    [Min(0.01f)]
+    [SerializeField] private float eyeContactBlendInDuration = 0.35f;
+
+    [Tooltip("両目を元のダンス姿勢へ戻すブレンド時間です。")]
+    [Min(0.01f)]
+    [SerializeField] private float eyeContactBlendOutDuration = 0.65f;
+
+    [Tooltip("眼球の回転を制限する強さです。大きいほど眼球が横を向きすぎにくくなります。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float eyeContactClampWeight = 0.65f;
 
     [Header("Legacy Look At")]
 
@@ -274,6 +293,8 @@ public class TestSceneVoiceManager : MonoBehaviour
     private UnityChan.FaceUpdate faceUpdate;
     private Rig targetRig;
     private float targetRigWeight = 0f;
+    private MultiAimConstraint stabilizedUpperChestConstraint;
+    private VoiceEyeContactIK eyeContactController;
     private LipSyncMouthPriority lipSyncMouthPriority;
     private VoiceReactionVisualFeedback visualFeedback;
 
@@ -691,6 +712,7 @@ public class TestSceneVoiceManager : MonoBehaviour
     private Coroutine faceReactionCoroutine;
     private Coroutine lookAtCoroutine;
     private Coroutine rigBlendCoroutine;
+    private Coroutine upperChestBlendCoroutine;
     private int activeBodyLayerIndex = -1;
 
     private void TrySetupUnityChan()
@@ -761,6 +783,8 @@ public class TestSceneVoiceManager : MonoBehaviour
             follower.directionSmoothTime = stabilizedDirectionSmoothTime;
             follower.directionDeadZoneDegrees = stabilizedDirectionDeadZone;
             follower.targetDistance = stabilizedTargetDistance;
+            follower.maxYawDegrees = stabilizedMaxTargetYaw;
+            follower.maxPitchDegrees = stabilizedMaxTargetPitch;
         }
         else
         {
@@ -774,6 +798,8 @@ public class TestSceneVoiceManager : MonoBehaviour
             aimTarget.transform.position = mainCam.transform.position;
         }
 
+        SetupEyeContact(aimTarget.transform);
+
         // 4. Root Motionの進行方向を変えないよう、キャラクタールートは回さない。
         //    安定化した胸上部・首・頭のAimだけでプレイヤーを見る。
         if (lookAtMode == VoiceLookAtMode.Stabilized)
@@ -784,15 +810,12 @@ public class TestSceneVoiceManager : MonoBehaviour
                     targetAnimator.GetBoneTransform(HumanBodyBones.UpperChest) != null
                         ? HumanBodyBones.UpperChest
                         : HumanBodyBones.Chest;
-                AddUpperBodyAimConstraint(
+                stabilizedUpperChestConstraint = AddUpperBodyAimConstraint(
                     rigObj.transform, aimTarget.transform, upperBodyBone,
                     "StabilizedUpperChestAimConstraint", stabilizedUpperChestWeight,
                     stabilizedUpperChestMaxAngle, false);
 
-                AddUpperBodyAimConstraint(
-                    rigObj.transform, aimTarget.transform, HumanBodyBones.Neck,
-                    "StabilizedNeckAimConstraint", stabilizedNeckWeight,
-                    stabilizedNeckMaxAngle, false);
+                // 胸と頭の間で回転解が競合しやすいため、Stabilizedでは首Aimを使用しない。
             }
 
             AddUpperBodyAimConstraint(
@@ -829,7 +852,46 @@ public class TestSceneVoiceManager : MonoBehaviour
         Debug.Log($"TestSceneVoiceManager: Voice look-at rig setup. Presentation: {presentationMode}, Aim: {lookAtMode}");
     }
 
-    private void AddUpperBodyAimConstraint(
+    private void SetupEyeContact(Transform aimTarget)
+    {
+        if (targetAnimator == null || aimTarget == null) return;
+
+        Transform leftEye = targetAnimator.GetBoneTransform(HumanBodyBones.LeftEye);
+        Transform rightEye = targetAnimator.GetBoneTransform(HumanBodyBones.RightEye);
+        if (leftEye == null || rightEye == null)
+        {
+            Debug.LogWarning(
+                "[VoiceReaction] Humanoidの両目ボーンが見つからないため、" +
+                "アイコンタク制御を無効にします。");
+            return;
+        }
+
+        // Prefabの従来IKLookAtは眼球Weightが0固定で、
+        // ここで追加する眼球専用IKとSetLookAtWeightが競合するためTestScene内だけ無効化する。
+        UnityChan.IKLookAt legacyLookAt =
+            unityChanObj != null
+                ? unityChanObj.GetComponentInChildren<UnityChan.IKLookAt>(true)
+                : null;
+        if (legacyLookAt != null)
+        {
+            legacyLookAt.enabled = false;
+        }
+
+        eyeContactController =
+            targetAnimator.GetComponent<VoiceEyeContactIK>();
+        if (eyeContactController == null)
+        {
+            eyeContactController =
+                targetAnimator.gameObject.AddComponent<VoiceEyeContactIK>();
+        }
+
+        eyeContactController.Configure(
+            targetAnimator,
+            aimTarget,
+            eyeContactClampWeight);
+    }
+
+    private MultiAimConstraint AddUpperBodyAimConstraint(
         Transform rigParent,
         Transform aimTarget,
         HumanBodyBones bone,
@@ -841,7 +903,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         Transform boneTransform = targetAnimator.GetBoneTransform(bone);
         if (boneTransform == null || weight <= 0f)
         {
-            return;
+            return null;
         }
 
         GameObject constraintObject = new GameObject(constraintName);
@@ -878,6 +940,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
 
         aimConstraint.data = data;
+        return aimConstraint;
     }
 
     private void ProcessRecognitionResult(string jsonResult)
@@ -1005,7 +1068,7 @@ public class TestSceneVoiceManager : MonoBehaviour
                 if (presentationMode == VoiceReactionPresentationMode.Coordinated)
                 {
                     bodyReactionCoroutine = StartCoroutine(
-                        PlayBodyReactionRoutine(layerIndex));
+                        PlayBodyReactionRoutine(layerIndex, kr));
                 }
                 else
                 {
@@ -1017,17 +1080,29 @@ public class TestSceneVoiceManager : MonoBehaviour
             }
         }
 
-        // 目線を合わせる (Weightを1にする)
-        if (targetRig != null)
+        // 目線を合わせる。腕リアクションでは弱め、ダンス姿勢との競合を防ぐ。
+        if (targetRig != null || eyeContactController != null)
         {
             if (lookAtCoroutine != null)
             {
                 StopCoroutine(lookAtCoroutine);
+                lookAtCoroutine = null;
             }
 
-            SetRigTargetWeight(1f);
-            lookAtCoroutine = StartCoroutine(ResetLookAtRoutine());
-            reactionStarted = true;
+            float lookAtStrength = ResolveLookAtStrength(kr);
+            float eyeContactStrength = ResolveEyeContactStrength(kr);
+            float upperBodyFacingStrength = ResolveUpperBodyFacingStrength(kr);
+            SetGazeTargetWeights(
+                lookAtStrength,
+                eyeContactStrength,
+                upperBodyFacingStrength);
+            if (lookAtStrength > 0f || eyeContactStrength > 0f ||
+                upperBodyFacingStrength > 0f)
+            {
+                lookAtCoroutine = StartCoroutine(
+                    ResetLookAtRoutine(ResolveLookAtHoldDuration(kr)));
+                reactionStarted = true;
+            }
         }
 
         if (reactionStarted)
@@ -1282,7 +1357,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         bodyReactionCoroutine = null;
     }
 
-    private IEnumerator PlayBodyReactionRoutine(int layerIndex)
+    private IEnumerator PlayBodyReactionRoutine(int layerIndex, KeywordReaction reaction)
     {
         if (targetAnimator == null)
         {
@@ -1297,7 +1372,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsed / Mathf.Max(0.0001f, blendInDuration));
-            float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
+            float easedProgress = SmootherStep(progress);
             targetAnimator.SetLayerWeight(layerIndex, Mathf.Lerp(startWeight, 1f, easedProgress));
             yield return null;
         }
@@ -1309,10 +1384,25 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
 
         targetAnimator.SetLayerWeight(layerIndex, 1f);
-        float holdDuration = Mathf.Max(0f, bodyReactionDuration - blendInDuration);
-        if (holdDuration > 0f)
+
+        float returnStartNormalizedTime = reaction != null
+            ? reaction.bodyReturnStartNormalizedTime
+            : -1f;
+        if (returnStartNormalizedTime >= 0f && reaction != null &&
+            !string.IsNullOrEmpty(reaction.bodyReactionName))
         {
-            yield return new WaitForSeconds(holdDuration);
+            yield return WaitForBodyReactionPosition(
+                layerIndex,
+                reaction.bodyReactionName,
+                Mathf.Clamp01(returnStartNormalizedTime));
+        }
+        else
+        {
+            float holdDuration = Mathf.Max(0f, bodyReactionDuration - blendInDuration);
+            if (holdDuration > 0f)
+            {
+                yield return new WaitForSeconds(holdDuration);
+            }
         }
 
         if (targetAnimator == null)
@@ -1322,12 +1412,19 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
 
         elapsed = 0f;
-        float blendOutDuration = Mathf.Max(0.01f, bodyReturnBlendDuration);
+        float requestedBlendDuration = reaction != null
+            ? reaction.bodyReturnBlendDuration
+            : -1f;
+        float blendOutDuration = Mathf.Max(
+            0.01f,
+            requestedBlendDuration > 0f
+                ? requestedBlendDuration
+                : bodyReturnBlendDuration);
         while (elapsed < blendOutDuration && targetAnimator != null)
         {
             elapsed += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsed / blendOutDuration);
-            float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
+            float easedProgress = SmootherStep(progress);
             targetAnimator.SetLayerWeight(layerIndex, 1f - easedProgress);
             yield return null;
         }
@@ -1341,6 +1438,48 @@ public class TestSceneVoiceManager : MonoBehaviour
         bodyReactionCoroutine = null;
     }
 
+    private IEnumerator WaitForBodyReactionPosition(
+        int layerIndex,
+        string stateName,
+        float targetNormalizedTime)
+    {
+        int stateHash = Animator.StringToHash(stateName);
+        float safetyElapsed = 0f;
+        float safetyTimeout = Mathf.Max(5f, bodyReactionDuration + 2f);
+
+        while (targetAnimator != null && safetyElapsed < safetyTimeout)
+        {
+            AnimatorStateInfo currentState =
+                targetAnimator.GetCurrentAnimatorStateInfo(layerIndex);
+            AnimatorStateInfo nextState =
+                targetAnimator.GetNextAnimatorStateInfo(layerIndex);
+
+            bool currentIsReaction = currentState.shortNameHash == stateHash;
+            bool nextIsReaction = nextState.shortNameHash == stateHash;
+            if ((currentIsReaction && currentState.normalizedTime >= targetNormalizedTime) ||
+                (nextIsReaction && nextState.normalizedTime >= targetNormalizedTime))
+            {
+                yield break;
+            }
+
+            safetyElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (targetAnimator != null)
+        {
+            Debug.LogWarning(
+                $"[VoiceReaction] '{stateName}' の再生位置を確認できなかったため、" +
+                "安全のためダンスへ戻します。");
+        }
+    }
+
+    private static float SmootherStep(float value)
+    {
+        float t = Mathf.Clamp01(value);
+        return t * t * t * (t * (t * 6f - 15f) + 10f);
+    }
+
     private IEnumerator ResetFaceReactionRoutine(float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -1351,16 +1490,50 @@ public class TestSceneVoiceManager : MonoBehaviour
         faceReactionCoroutine = null;
     }
 
-    private IEnumerator ResetLookAtRoutine()
+    private IEnumerator ResetLookAtRoutine(float holdDuration)
     {
-        yield return new WaitForSeconds(lookAtDuration);
-        SetRigTargetWeight(0f);
+        yield return new WaitForSeconds(Mathf.Max(0f, holdDuration));
+        SetGazeTargetWeights(0f, 0f, 0f);
         lookAtCoroutine = null;
     }
 
-    private void SetRigTargetWeight(float weight)
+    private void SetGazeTargetWeights(
+        float rigWeight,
+        float eyeWeight,
+        float upperChestWeight)
     {
-        targetRigWeight = Mathf.Clamp01(weight);
+        targetRigWeight = Mathf.Clamp01(rigWeight);
+
+        if (stabilizedUpperChestConstraint != null)
+        {
+            if (upperChestBlendCoroutine != null)
+            {
+                StopCoroutine(upperChestBlendCoroutine);
+            }
+
+            float destinationUpperChestWeight = Mathf.Clamp01(upperChestWeight);
+            float upperChestBlendDuration =
+                destinationUpperChestWeight > stabilizedUpperChestConstraint.weight
+                    ? stabilizedRigBlendInDuration
+                    : stabilizedRigBlendOutDuration;
+            upperChestBlendCoroutine = StartCoroutine(
+                BlendUpperChestWeightRoutine(
+                    destinationUpperChestWeight,
+                    upperChestBlendDuration));
+        }
+
+        if (eyeContactController != null)
+        {
+            float destinationEyeWeight = Mathf.Clamp01(eyeWeight);
+            float eyeBlendDuration =
+                destinationEyeWeight > eyeContactController.CurrentWeight
+                    ? eyeContactBlendInDuration
+                    : eyeContactBlendOutDuration;
+            eyeContactController.BlendTo(
+                destinationEyeWeight,
+                eyeBlendDuration);
+        }
+
         if (targetRig == null) return;
 
         if (rigBlendCoroutine != null)
@@ -1371,17 +1544,69 @@ public class TestSceneVoiceManager : MonoBehaviour
         rigBlendCoroutine = StartCoroutine(BlendRigWeightRoutine(targetRigWeight));
     }
 
+    private IEnumerator BlendUpperChestWeightRoutine(
+        float destination,
+        float duration)
+    {
+        if (stabilizedUpperChestConstraint == null)
+        {
+            upperChestBlendCoroutine = null;
+            yield break;
+        }
+
+        float startWeight = stabilizedUpperChestConstraint.weight;
+        float elapsed = 0f;
+        duration = Mathf.Max(0.01f, duration);
+        while (stabilizedUpperChestConstraint != null && elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            stabilizedUpperChestConstraint.weight = Mathf.Lerp(
+                startWeight,
+                destination,
+                SmootherStep(progress));
+            yield return null;
+        }
+
+        if (stabilizedUpperChestConstraint != null)
+        {
+            stabilizedUpperChestConstraint.weight = destination;
+        }
+        upperChestBlendCoroutine = null;
+    }
+
     private IEnumerator BlendRigWeightRoutine(float destination)
     {
-        while (targetRig != null && !Mathf.Approximately(targetRig.weight, destination))
+        if (targetRig == null)
         {
-            float activeBlendSpeed = lookAtMode == VoiceLookAtMode.Stabilized
-                ? stabilizedRigBlendSpeed
-                : rigBlendSpeed;
-            targetRig.weight = Mathf.MoveTowards(
-                targetRig.weight,
+            rigBlendCoroutine = null;
+            yield break;
+        }
+
+        float startWeight = targetRig.weight;
+        float duration;
+        if (lookAtMode == VoiceLookAtMode.Stabilized)
+        {
+            duration = destination > startWeight
+                ? stabilizedRigBlendInDuration
+                : stabilizedRigBlendOutDuration;
+        }
+        else
+        {
+            float activeBlendSpeed = Mathf.Max(0.01f, rigBlendSpeed);
+            duration = Mathf.Abs(destination - startWeight) / activeBlendSpeed;
+        }
+
+        float elapsed = 0f;
+        duration = Mathf.Max(0.01f, duration);
+        while (targetRig != null && elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            targetRig.weight = Mathf.Lerp(
+                startWeight,
                 destination,
-                Mathf.Max(0.01f, activeBlendSpeed) * Time.deltaTime);
+                SmootherStep(progress));
             yield return null;
         }
 
@@ -1390,6 +1615,89 @@ public class TestSceneVoiceManager : MonoBehaviour
             targetRig.weight = destination;
         }
         rigBlendCoroutine = null;
+    }
+
+    private static float ResolveLookAtStrength(KeywordReaction reaction)
+    {
+        if (reaction == null) return 0f;
+        if (reaction.overrideLookAtStrength)
+        {
+            return Mathf.Clamp01(reaction.lookAtStrength);
+        }
+
+        switch (reaction.commandId)
+        {
+            case "LookAt":
+                return 0.72f;
+            case "Wave":
+            case "UnityChanCall":
+                return 0.48f;
+            case "Cute":
+                return 0.65f;
+            case "Default":
+                return 0f;
+            default:
+                return 0.4f;
+        }
+    }
+
+    private static float ResolveUpperBodyFacingStrength(KeywordReaction reaction)
+    {
+        if (reaction == null) return 0f;
+        if (reaction.overrideUpperBodyFacingStrength)
+        {
+            return Mathf.Clamp01(reaction.upperBodyFacingStrength);
+        }
+
+        switch (reaction.commandId)
+        {
+            case "LookAt":
+                return 0.22f;
+            case "Wave":
+            case "UnityChanCall":
+                return 0.18f;
+            case "Cute":
+                return 0.85f;
+            default:
+                return 0f;
+        }
+    }
+
+    private float ResolveLookAtHoldDuration(KeywordReaction reaction)
+    {
+        if (reaction == null) return lookAtDuration;
+        if (reaction.overrideLookAtHoldDuration)
+        {
+            return Mathf.Max(0f, reaction.lookAtHoldDuration);
+        }
+
+        return reaction.commandId == "Cute"
+            ? 3.6f
+            : lookAtDuration;
+    }
+
+    private static float ResolveEyeContactStrength(KeywordReaction reaction)
+    {
+        if (reaction == null) return 0f;
+        if (reaction.overrideEyeContactStrength)
+        {
+            return Mathf.Clamp01(reaction.eyeContactStrength);
+        }
+
+        switch (reaction.commandId)
+        {
+            case "LookAt":
+                return 0.95f;
+            case "Wave":
+            case "UnityChanCall":
+                return 0.85f;
+            case "Cute":
+                return 0.7f;
+            case "Default":
+                return 0f;
+            default:
+                return 0.65f;
+        }
     }
 
     void OnDestroy()
@@ -1411,6 +1719,88 @@ public class TestSceneVoiceManager : MonoBehaviour
         {
             VoskPcmUtility.Return(pendingCommand.audioData);
         }
+    }
+}
+
+/// <summary>
+/// Humanoidの両目だけを安定化済みAimTargetへ向ける。
+/// 胸と頭はAnimation Rigging側で制御し、ここでは変更しない。
+/// </summary>
+[RequireComponent(typeof(Animator))]
+public class VoiceEyeContactIK : MonoBehaviour
+{
+    private Animator targetAnimator;
+    private Transform aimTarget;
+    private float clampWeight = 0.65f;
+    private float startWeight;
+    private float destinationWeight;
+    private float blendDuration = 0.01f;
+    private float blendElapsed;
+
+    public float CurrentWeight { get; private set; }
+
+    public void Configure(
+        Animator animator,
+        Transform target,
+        float requestedClampWeight)
+    {
+        targetAnimator = animator != null ? animator : GetComponent<Animator>();
+        aimTarget = target;
+        clampWeight = Mathf.Clamp01(requestedClampWeight);
+        CurrentWeight = 0f;
+        startWeight = 0f;
+        destinationWeight = 0f;
+        blendElapsed = blendDuration;
+    }
+
+    public void BlendTo(float weight, float duration)
+    {
+        startWeight = CurrentWeight;
+        destinationWeight = Mathf.Clamp01(weight);
+        blendDuration = Mathf.Max(0.01f, duration);
+        blendElapsed = 0f;
+    }
+
+    private void Update()
+    {
+        if (Mathf.Approximately(CurrentWeight, destinationWeight)) return;
+
+        blendElapsed += Time.deltaTime;
+        float progress = Mathf.Clamp01(blendElapsed / blendDuration);
+        CurrentWeight = Mathf.Lerp(
+            startWeight,
+            destinationWeight,
+            SmootherStep(progress));
+        if (progress >= 1f)
+        {
+            CurrentWeight = destinationWeight;
+        }
+    }
+
+    private void OnAnimatorIK(int layerIndex)
+    {
+        if (layerIndex != 0 || targetAnimator == null) return;
+
+        if (aimTarget == null || CurrentWeight <= 0.0001f)
+        {
+            targetAnimator.SetLookAtWeight(0f);
+            return;
+        }
+
+        // bodyWeight/headWeightは0にし、両目のみでアイコンタクトを作る。
+        targetAnimator.SetLookAtWeight(
+            CurrentWeight,
+            0f,
+            0f,
+            1f,
+            clampWeight);
+        targetAnimator.SetLookAtPosition(aimTarget.position);
+    }
+
+    private static float SmootherStep(float value)
+    {
+        float t = Mathf.Clamp01(value);
+        return t * t * t * (t * (t * 6f - 15f) + 10f);
     }
 }
 
@@ -1457,6 +1847,8 @@ public class StabilizedAimTargetFollower : MonoBehaviour
     [Min(0f)] public float directionSmoothTime = 0.18f;
     [Range(0f, 10f)] public float directionDeadZoneDegrees = 1.5f;
     [Min(0.1f)] public float targetDistance = 2f;
+    [Range(0f, 89f)] public float maxYawDegrees = 60f;
+    [Range(0f, 60f)] public float maxPitchDegrees = 25f;
 
     private Vector3 stableDirection;
     private bool initialized;
@@ -1468,7 +1860,7 @@ public class StabilizedAimTargetFollower : MonoBehaviour
         Vector3 origin = originTransform.TransformPoint(originLocalOffset);
         Vector3 desiredDirection = targetCamera.transform.position - origin;
         if (desiredDirection.sqrMagnitude < 0.000001f) return;
-        desiredDirection.Normalize();
+        desiredDirection = ClampDirectionToForwardCone(desiredDirection.normalized);
 
         if (!initialized)
         {
@@ -1502,5 +1894,31 @@ public class StabilizedAimTargetFollower : MonoBehaviour
         }
 
         transform.position = origin + stableDirection * Mathf.Max(0.1f, targetDistance);
+    }
+
+    private Vector3 ClampDirectionToForwardCone(Vector3 worldDirection)
+    {
+        Vector3 localDirection =
+            originTransform.InverseTransformDirection(worldDirection).normalized;
+        float horizontalLength = Mathf.Sqrt(
+            localDirection.x * localDirection.x +
+            localDirection.z * localDirection.z);
+        float yaw = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
+        float pitch = Mathf.Atan2(localDirection.y, horizontalLength) * Mathf.Rad2Deg;
+
+        yaw = Mathf.Clamp(yaw, -Mathf.Max(0f, maxYawDegrees), Mathf.Max(0f, maxYawDegrees));
+        pitch = Mathf.Clamp(
+            pitch,
+            -Mathf.Max(0f, maxPitchDegrees),
+            Mathf.Max(0f, maxPitchDegrees));
+
+        float yawRadians = yaw * Mathf.Deg2Rad;
+        float pitchRadians = pitch * Mathf.Deg2Rad;
+        float pitchCosine = Mathf.Cos(pitchRadians);
+        Vector3 clampedLocalDirection = new Vector3(
+            Mathf.Sin(yawRadians) * pitchCosine,
+            Mathf.Sin(pitchRadians),
+            Mathf.Cos(yawRadians) * pitchCosine);
+        return originTransform.TransformDirection(clampedLocalDirection).normalized;
     }
 }

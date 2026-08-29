@@ -921,7 +921,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b440719a9ec144adc9ce347c882d7728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Reaktion.SelfDestruction
-  conditionType: 0
+  conditionType: 2
   referenceType: 2
   maxDistance: 10
   bounds:

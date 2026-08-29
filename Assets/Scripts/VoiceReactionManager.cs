@@ -26,6 +26,42 @@ public class KeywordReaction
 
     [Tooltip("体リアクションを再生するAnimatorレイヤー名です。空欄ならReactionLayerを使用します。コマンドごとに異なるAvatarMaskを選べます。")]
     public string bodyReactionLayerName;
+
+    [Tooltip("ダンスへ戻るブレンドを開始するリアクションの正規化再生位置です。0.87ならクリップの87%地点で開始します。負の値なら従来の固定秒数を使用します。")]
+    [Range(-1f, 1f)]
+    public float bodyReturnStartNormalizedTime = -1f;
+
+    [Tooltip("このリアクションからダンスへ戻るブレンド時間です。0以下ならマネージャーの共通設定を使用します。")]
+    [Min(-1f)]
+    public float bodyReturnBlendDuration = -1f;
+
+    [Tooltip("有効にすると、commandId別の自動設定ではなく下の目線強度を使用します。")]
+    public bool overrideLookAtStrength;
+
+    [Tooltip("このコマンドでプレイヤーを見る強さです。0で無効です。")]
+    [Range(0f, 1f)]
+    public float lookAtStrength = 0.4f;
+
+    [Tooltip("有効にすると、commandId別の自動設定ではなく下のアイコンタクト強度を使用します。")]
+    public bool overrideEyeContactStrength;
+
+    [Tooltip("このコマンドで両目をプレイヤーへ向ける強さです。0で無効です。")]
+    [Range(0f, 1f)]
+    public float eyeContactStrength = 0.8f;
+
+    [Tooltip("有効にすると、commandId別の自動設定ではなく下の上半身正面補正強度を使用します。")]
+    public bool overrideUpperBodyFacingStrength;
+
+    [Tooltip("胸上部をプレイヤーの正面へ向ける強さです。")]
+    [Range(0f, 1f)]
+    public float upperBodyFacingStrength = 0.2f;
+
+    [Tooltip("有効にすると、共通設定ではなく下の目線維持時間を使用します。")]
+    public bool overrideLookAtHoldDuration;
+
+    [Tooltip("目線と上半身の正面補正を維持する時間です。")]
+    [Min(0f)]
+    public float lookAtHoldDuration = 3f;
 }
 
 public class VoiceReactionManager : MonoBehaviour

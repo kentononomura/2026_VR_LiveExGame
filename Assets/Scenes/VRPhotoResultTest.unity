@@ -152,6 +152,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VRPhotoViewer
   noPhotoTexture: {fileID: 0}
+  aspectFitShader: {fileID: 0}
+  photoBackgroundColor: {r: 0, g: 0, b: 0, a: 1}
   flipUIText: 0
   scoreTextPosition: {x: 0, y: 200}
   scoreRowSize: {x: 1000, y: 200}
