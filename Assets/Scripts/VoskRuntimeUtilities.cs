@@ -96,7 +96,7 @@ public static class VoskPcmUtility
 {
     public const int MicrophoneBufferSeconds = 3;
 
-    public static byte[] RentAndConvert(float[] samples, out int byteCount)
+    public static byte[] RentAndConvert(ReadOnlySpan<float> samples, out int byteCount)
     {
         byteCount = samples.Length * sizeof(short);
         byte[] pcmBytes = ArrayPool<byte>.Shared.Rent(Math.Max(1, byteCount));

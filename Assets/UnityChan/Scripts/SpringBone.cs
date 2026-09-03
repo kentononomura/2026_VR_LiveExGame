@@ -77,18 +77,12 @@ namespace UnityChan
 
 		public void UpdateSpring ()
 		{
-			// Time.timeScale == 0 の撮影停止中は、この後の sqrDt 除算が0除算になる。
-			// 現在の揺れ物姿勢を保ったまま計算を止め、NaNによる髪・服の崩れを防ぐ。
-			float deltaTime = Time.deltaTime;
-			if (deltaTime <= Mathf.Epsilon)
-				return;
-
 			//Kobayashi
 			org = trs;
 			//回転をリセット
 			trs.localRotation = Quaternion.identity * localRotation;
 
-			float sqrDt = deltaTime * deltaTime;
+			float sqrDt = Time.deltaTime * Time.deltaTime;
 
 			//stiffness
 			Vector3 force = trs.rotation * (boneAxis * stiffnessForce) / sqrDt;

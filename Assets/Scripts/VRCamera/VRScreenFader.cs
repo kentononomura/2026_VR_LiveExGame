@@ -113,6 +113,11 @@ public class VRScreenFader : MonoBehaviour
         Debug.Log($"[SceneLoader] '{sceneName}' への遷移を開始します。");
 
         yield return StartCoroutine(FadeRoutine(0f, 1f, fadeDuration, null));
+
+        // FadeRoutine の完了直後にロードを始めると、最終的な真っ黒のフレームが
+        // HMDへ提出される前にScene activationがメインスレッドを占有する場合がある。
+        // 描画完了まで待ち、XR compositorが再投影できる黒フレームを確実に渡す。
+        yield return new WaitForEndOfFrame();
         beforeLoad?.Invoke();
 
         ThreadPriority previousPriority = Application.backgroundLoadingPriority;
@@ -129,6 +134,9 @@ public class VRScreenFader : MonoBehaviour
             yield break;
         }
 
+        // バックグラウンドロードが通常フレームより優先されないよう明示する。
+        loadOperation.priority = -1;
+
         // 読み込みを90%まで進め、黒画面が確実に描画された状態でActivationを行う。
         loadOperation.allowSceneActivation = false;
         while (loadOperation.progress < 0.9f)
@@ -136,7 +144,9 @@ public class VRScreenFader : MonoBehaviour
             yield return null;
         }
 
-        yield return null;
+        // Activation直前にも完成した黒フレームを提出する。重いAwake/OnEnableが
+        // あっても、ユーザーには直前の安定した黒画面が再投影される。
+        yield return new WaitForEndOfFrame();
         loadOperation.allowSceneActivation = true;
         while (!loadOperation.isDone)
         {
@@ -168,9 +178,9 @@ public class VRScreenFader : MonoBehaviour
 
     private IEnumerator WaitForStableFrames()
     {
-        const int requiredStableFrames = 3;
-        const float maximumStableFrameTime = 0.05f;
-        float timeoutAt = Time.realtimeSinceStartup + 3f;
+        const int requiredStableFrames = 12;
+        const float maximumStableFrameTime = 0.022f;
+        float timeoutAt = Time.realtimeSinceStartup + 10f;
         int stableFrames = 0;
 
         while (stableFrames < requiredStableFrames && Time.realtimeSinceStartup < timeoutAt)
@@ -197,19 +207,20 @@ public class VRScreenFader : MonoBehaviour
             }
         }
 
-        float timeoutAt = Time.realtimeSinceStartup + 30f;
+        float nextWarningAt = Time.realtimeSinceStartup + 30f;
         while (providers.Exists(provider => provider != null && !provider.IsSceneLoadReady))
         {
-            if (Time.realtimeSinceStartup >= timeoutAt)
+            if (Time.realtimeSinceStartup >= nextWarningAt)
             {
                 foreach (ISceneLoadReady provider in providers)
                 {
                     if (provider != null && !provider.IsSceneLoadReady)
                     {
-                        Debug.LogWarning($"[VRScreenFader] シーン準備待機がタイムアウトしました: {provider.SceneLoadStatus}");
+                        Debug.LogWarning($"[VRScreenFader] シーン準備を継続して待機しています: {provider.SceneLoadStatus}");
                     }
                 }
-                yield break;
+                // 未完了のまま表示へ進めず、以後は30秒ごとに状態だけを記録する。
+                nextWarningAt = Time.realtimeSinceStartup + 30f;
             }
             yield return null;
         }
@@ -285,7 +296,9 @@ public class VRScreenFader : MonoBehaviour
 
     public void FadeIn(float duration, System.Action onComplete)
     {
-        if (isFading) return;
+        // シーン遷移中のフェードインはLoadSceneRoutineだけが行う。
+        // 新しいシーンのStartから呼ばれても、準備完了前に黒画面を開かない。
+        if (managedSceneLoadInProgress || isFading) return;
         StartCoroutine(FadeRoutine(1f, 0f, duration, onComplete));
     }
 

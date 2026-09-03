@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Buffers;
 using System.Globalization;
 using System.Text;
 using UnityEngine.Animations.Rigging;
@@ -27,7 +28,7 @@ public enum VoiceReactionPresentationMode
     Coordinated
 }
 
-public class TestSceneVoiceManager : MonoBehaviour
+public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 {
     [Header("Vosk Settings")]
     public string modelFolderName = "vosk-model-small-ja-0.22";
@@ -245,13 +246,22 @@ public class TestSceneVoiceManager : MonoBehaviour
     [Tooltip("左手ペンライトの既存ゲージコントローラーです。未設定ならSaberのHandTypeから自動取得します。")]
     [SerializeField] private PenlightGaugeController leftPenlightOverride;
 
+    [Header("Voice Command HUD (Optional)")]
+    [Tooltip("リアクションが成立したコマンドを強調表示します。未設定でも音声認識は継続します。")]
+    [SerializeField] private VoiceCommandHUD voiceCommandHud;
+
     private Model model;
     private VoskRecognizer recognizer;
     private string microphoneDevice;
     private AudioClip audioClip;
     private int lastSamplePosition = 0;
     private bool isListening = false;
-    private bool isModelLoaded = false;
+    private bool microphoneHasStarted;
+    private float microphoneWarmupDeadline;
+    private int microphoneStartAttempts;
+    private volatile bool isModelLoaded = false;
+    private volatile bool initializationFailed;
+    private volatile string initializationStatus = "音声認識の初期化待機中";
     private float nextMicrophoneStartAttemptTime;
     private bool isShuttingDown = false;
     private const int SampleRate = 16000;
@@ -288,6 +298,12 @@ public class TestSceneVoiceManager : MonoBehaviour
     private ConcurrentQueue<string> resultQueue = new ConcurrentQueue<string>();
     private Thread workerThread;
 
+    public bool IsSceneLoadReady =>
+        initializationFailed ||
+        (isModelLoaded && recognizer != null && isListening && audioClip != null && microphoneHasStarted);
+
+    public string SceneLoadStatus => initializationStatus;
+
     // Unity-chan references
     private GameObject unityChanObj;
     private UnityChan.FaceUpdate faceUpdate;
@@ -300,6 +316,11 @@ public class TestSceneVoiceManager : MonoBehaviour
 
     void Start()
     {
+        if (voiceCommandHud == null)
+        {
+            voiceCommandHud = GetComponent<VoiceCommandHUD>();
+        }
+
         // TestSceneでは右手にスマホカメラを持つため、右手のペンライト（Saber）を非表示にする
         StartCoroutine(HideRightSaberRoutine());
 
@@ -308,16 +329,13 @@ public class TestSceneVoiceManager : MonoBehaviour
         pushToTalkAction.Enable();
 #endif
 
-        // シーン遷移直後の高負荷を避けるため、数秒待ってから非同期でモデルロードを開始する
-        StartCoroutine(DelayedModelLoadRoutine());
+        // フェードイン後へ初期化を遅延させず、黒画面中にモデルとマイクの準備完了を待つ。
+        StartCoroutine(InitializeVoiceRecognitionRoutine());
     }
 
-    private IEnumerator DelayedModelLoadRoutine()
+    private IEnumerator InitializeVoiceRecognitionRoutine()
     {
-        // シーン遷移直後のアセット初期化スパイクを逃がすため、2.0秒間待機
-        yield return new WaitForSeconds(2.0f);
-
-
+        initializationStatus = "音声モデルファイルを準備中";
         string modelPath = null;
         string modelPrepareError = null;
         yield return VoskModelPathResolver.Prepare(
@@ -327,11 +345,14 @@ public class TestSceneVoiceManager : MonoBehaviour
 
         if (!string.IsNullOrEmpty(modelPrepareError) || string.IsNullOrEmpty(modelPath))
         {
+            initializationFailed = true;
+            initializationStatus = "音声モデルファイルの準備失敗";
             Debug.LogError($"[Vosk] TestScene 用モデルを準備できませんでした: {modelPrepareError}");
             yield break;
         }
 
         string recognitionGrammar = BuildRecognitionGrammarJson();
+        initializationStatus = "音声認識器を初期化中";
         Debug.Log($"[Vosk] TestScene 用のモデルロード非同期タスクを起動します: {modelPath}");
         Task.Run(() =>
         {
@@ -354,14 +375,18 @@ public class TestSceneVoiceManager : MonoBehaviour
 
                 workerThread = new Thread(VoskWorkerLoop);
                 workerThread.IsBackground = true;
+                workerThread.Priority = System.Threading.ThreadPriority.BelowNormal;
                 workerThread.Start();
 
                 isModelLoaded = true;
+                initializationStatus = "マイクを起動中";
                 string mode = string.IsNullOrEmpty(recognitionGrammar) ? "一般日本語" : "コマンド文法制限";
                 Debug.Log($"[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。認識モード: {mode}");
             }
             catch (System.Exception ex)
             {
+                initializationFailed = true;
+                initializationStatus = "音声認識器の初期化失敗";
                 Debug.LogError($"[Vosk] モデル初期化例外: {ex.Message}\n{ex.StackTrace}");
             }
         });
@@ -427,7 +452,15 @@ public class TestSceneVoiceManager : MonoBehaviour
 
     private void StartMicrophone()
     {
-        if (!VRMicrophonePermission.EnsureGranted()) return;
+        if (!VRMicrophonePermission.EnsureGranted())
+        {
+            if (VRMicrophonePermission.RequestFailed)
+            {
+                initializationFailed = true;
+                initializationStatus = "マイク権限がないため音声入力を開始できません";
+            }
+            return;
+        }
         if (Time.unscaledTime < nextMicrophoneStartAttemptTime) return;
         nextMicrophoneStartAttemptTime = Time.unscaledTime + 2f;
 
@@ -463,13 +496,17 @@ public class TestSceneVoiceManager : MonoBehaviour
             }
         }
 
+        microphoneStartAttempts++;
         audioClip = Microphone.Start(microphoneDevice, true, VoskPcmUtility.MicrophoneBufferSeconds, SampleRate);
         isListening = audioClip != null;
+        microphoneHasStarted = false;
+        microphoneWarmupDeadline = Time.realtimeSinceStartup + 5f;
 
         if (isListening)
         {
             lastSamplePosition = 0;
             InitializePreRollBuffer();
+            initializationStatus = "マイク入力データを待機中";
             string selectedName = string.IsNullOrEmpty(microphoneDevice)
                 ? "Quest/Android システム既定マイク"
                 : microphoneDevice;
@@ -477,6 +514,15 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
         else
         {
+            if (microphoneStartAttempts >= 3)
+            {
+                initializationFailed = true;
+                initializationStatus = "マイクの起動に失敗しました";
+            }
+            else
+            {
+                initializationStatus = "マイクの起動を再試行中";
+            }
             Debug.LogError("[Vosk] マイクの開始に失敗しました。アプリのマイク権限を確認してください。");
         }
     }
@@ -557,7 +603,7 @@ public class TestSceneVoiceManager : MonoBehaviour
         }
 
         // ここでマイク/モデルロードのチェックと起動を行う
-        if (isModelLoaded && !isListening)
+        if (isModelLoaded && !isListening && !initializationFailed)
         {
             StartMicrophone();
             return;
@@ -566,39 +612,57 @@ public class TestSceneVoiceManager : MonoBehaviour
         if (!isListening || recognizer == null || audioClip == null) return;
 
         int currentPosition = Microphone.GetPosition(microphoneDevice);
+        if (!microphoneHasStarted && currentPosition > 0)
+        {
+            microphoneHasStarted = true;
+            initializationStatus = "音声入力準備完了";
+        }
+        else if (!microphoneHasStarted && Time.realtimeSinceStartup >= microphoneWarmupDeadline)
+        {
+            initializationFailed = true;
+            initializationStatus = "マイク入力データを取得できません";
+        }
         if (currentPosition >= 0 && lastSamplePosition != currentPosition)
         {
             int sampleCount = currentPosition - lastSamplePosition;
             if (sampleCount < 0) sampleCount += audioClip.samples;
 
-            float[] samples = new float[sampleCount];
-            audioClip.GetData(samples, lastSamplePosition);
-            lastSamplePosition = currentPosition;
+            float[] samples = ArrayPool<float>.Shared.Rent(sampleCount);
+            try
+            {
+                System.Span<float> sampleChunk = new System.Span<float>(samples, 0, sampleCount);
+                audioClip.GetData(sampleChunk, lastSamplePosition);
+                lastSamplePosition = currentPosition;
 
-            if (shouldSendPreRoll && (isHolding || isPostRollActive || shouldFinalize))
-            {
-                EnqueuePreRollAudio();
-                shouldSendPreRoll = false;
-            }
-
-            // 離した後も postRollDuration 分の語尾を Vosk へ渡してから確定する。
-            if (isHolding || isPostRollActive || shouldFinalize)
-            {
-                EnqueueAudioSamples(samples);
-            }
-            else
-            {
-                AppendPreRollSamples(samples);
-            }
-
-            if (isPostRollActive && !isHolding)
-            {
-                postRollSamplesRemaining -= sampleCount;
-                if (postRollSamplesRemaining <= 0)
+                if (shouldSendPreRoll && (isHolding || isPostRollActive || shouldFinalize))
                 {
-                    isPostRollActive = false;
-                    shouldFinalize = true;
+                    EnqueuePreRollAudio();
+                    shouldSendPreRoll = false;
                 }
+
+                // 離した後も postRollDuration 分の語尾を Vosk へ渡してから確定する。
+                if (isHolding || isPostRollActive || shouldFinalize)
+                {
+                    EnqueueAudioSamples(sampleChunk);
+                }
+                else
+                {
+                    AppendPreRollSamples(sampleChunk);
+                }
+
+                if (isPostRollActive && !isHolding)
+                {
+                    postRollSamplesRemaining -= sampleCount;
+                    if (postRollSamplesRemaining <= 0)
+                    {
+                        isPostRollActive = false;
+                        shouldFinalize = true;
+                    }
+                }
+            }
+            finally
+            {
+                ArrayPool<float>.Shared.Return(samples);
             }
         }
 
@@ -655,9 +719,9 @@ public class TestSceneVoiceManager : MonoBehaviour
         postRollSamplesRemaining = 0;
     }
 
-    private void AppendPreRollSamples(float[] samples)
+    private void AppendPreRollSamples(System.ReadOnlySpan<float> samples)
     {
-        if (preRollBuffer == null || preRollBuffer.Length == 0 || samples == null) return;
+        if (preRollBuffer == null || preRollBuffer.Length == 0 || samples.Length == 0) return;
 
         foreach (float sample in samples)
         {
@@ -671,21 +735,28 @@ public class TestSceneVoiceManager : MonoBehaviour
     {
         if (preRollBuffer == null || preRollSampleCount == 0) return;
 
-        float[] orderedSamples = new float[preRollSampleCount];
-        int startIndex = (preRollWriteIndex - preRollSampleCount + preRollBuffer.Length) % preRollBuffer.Length;
-        for (int i = 0; i < preRollSampleCount; i++)
+        float[] orderedSamples = ArrayPool<float>.Shared.Rent(preRollSampleCount);
+        try
         {
-            orderedSamples[i] = preRollBuffer[(startIndex + i) % preRollBuffer.Length];
-        }
+            int startIndex = (preRollWriteIndex - preRollSampleCount + preRollBuffer.Length) % preRollBuffer.Length;
+            for (int i = 0; i < preRollSampleCount; i++)
+            {
+                orderedSamples[i] = preRollBuffer[(startIndex + i) % preRollBuffer.Length];
+            }
 
-        EnqueueAudioSamples(orderedSamples);
+            EnqueueAudioSamples(new System.ReadOnlySpan<float>(orderedSamples, 0, preRollSampleCount));
+        }
+        finally
+        {
+            ArrayPool<float>.Shared.Return(orderedSamples);
+        }
         preRollSampleCount = 0;
         preRollWriteIndex = 0;
     }
 
-    private void EnqueueAudioSamples(float[] samples)
+    private void EnqueueAudioSamples(System.ReadOnlySpan<float> samples)
     {
-        if (samples == null || samples.Length == 0) return;
+        if (samples.Length == 0) return;
 
         float maxVal = 0f;
         foreach (float sample in samples)
@@ -1125,6 +1196,11 @@ public class TestSceneVoiceManager : MonoBehaviour
                 commandId,
                 targetAnimator,
                 unityChanObj != null ? unityChanObj.transform : null);
+
+            if (voiceCommandHud != null)
+            {
+                voiceCommandHud.HighlightCommand(commandId);
+            }
         }
     }
 

@@ -9,6 +9,8 @@ using UnityEngine.Android;
 /// </summary>
 public static class VRMicrophonePermission
 {
+    public static bool RequestFailed { get; private set; }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
     private static bool requestAttempted;
     private static PermissionCallbacks permissionCallbacks;
@@ -19,6 +21,7 @@ public static class VRMicrophonePermission
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (Permission.HasUserAuthorizedPermission(Permission.Microphone))
         {
+            RequestFailed = false;
             return true;
         }
 
@@ -43,12 +46,14 @@ public static class VRMicrophonePermission
 #if UNITY_ANDROID && !UNITY_EDITOR
     private static void OnPermissionGranted(string permissionName)
     {
+        RequestFailed = false;
         Debug.Log("[Microphone] マイク使用が許可されました。音声入力を開始します。");
         permissionCallbacks = null;
     }
 
     private static void OnPermissionDenied(string permissionName)
     {
+        RequestFailed = true;
         bool canExplainAndRequestAgain =
             Permission.ShouldShowRequestPermissionRationale(permissionName);
         if (canExplainAndRequestAgain)
@@ -69,6 +74,7 @@ public static class VRMicrophonePermission
 
     private static void OnPermissionRequestDismissed(string permissionName)
     {
+        RequestFailed = true;
         Debug.LogError("[Microphone] マイク使用許可のダイアログが閉じられました。Questの設定からこのアプリのマイク権限を許可してください。");
         permissionCallbacks = null;
     }

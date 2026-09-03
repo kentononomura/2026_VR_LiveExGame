@@ -1,0 +1,11 @@
+# Keep Vosk model text assets byte-for-byte stable across Windows and Android builds.
+Assets/StreamingAssets/vosk-model-small-ja-0.22/README text eol=lf
+Assets/StreamingAssets/vosk-model-small-ja-0.22/vosk-files.txt text eol=lf
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.conf text eol=lf
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.int text eol=lf
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.txt text eol=lf
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.mdl binary
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.fst binary
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.dubm binary
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.ie binary
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.mat binary

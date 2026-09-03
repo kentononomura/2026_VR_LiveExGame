@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Buffers;
 using UnityEngine.SceneManagement;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -141,6 +142,7 @@ public class TitleVoiceManager : MonoBehaviour
 
                 workerThread = new Thread(VoskWorkerLoop);
                 workerThread.IsBackground = true;
+                workerThread.Priority = System.Threading.ThreadPriority.BelowNormal;
                 workerThread.Start();
 
                 isModelLoaded = true;
@@ -369,42 +371,50 @@ public class TitleVoiceManager : MonoBehaviour
             int sampleCount = currentPosition - lastSamplePosition;
             if (sampleCount < 0) sampleCount += audioClip.samples;
 
-            float[] samples = new float[sampleCount];
-            audioClip.GetData(samples, lastSamplePosition);
-            lastSamplePosition = currentPosition;
-            lastMicrophoneDataTime = Time.unscaledTime;
-
-            float maxVal = 0f;
-            double squareSum = 0d;
-            foreach (float sample in samples)
+            float[] samples = ArrayPool<float>.Shared.Rent(sampleCount);
+            try
             {
-                float absolute = Mathf.Abs(sample);
-                if (absolute > maxVal) maxVal = absolute;
-                squareSum += sample * sample;
-            }
+                System.Span<float> sampleChunk = new System.Span<float>(samples, 0, sampleCount);
+                audioClip.GetData(sampleChunk, lastSamplePosition);
+                lastSamplePosition = currentPosition;
+                lastMicrophoneDataTime = Time.unscaledTime;
 
-            if (samples.Length > 0)
-            {
-                float rms = Mathf.Sqrt((float)(squareSum / samples.Length));
-                float detectedLevel = Mathf.Clamp01(rms * microphoneMeterSensitivity);
-                microphoneInputLevel = Mathf.Max(microphoneInputLevel, detectedLevel);
-            }
-
-            // 離したフレームの語尾も、確定要求より先に必ずVoskへ渡す。
-            if (isHolding || isReleased)
-            {
-                if (maxVal < 0.001f)
+                float maxVal = 0f;
+                double squareSum = 0d;
+                foreach (float sample in sampleChunk)
                 {
-                    Debug.LogWarning("[Vosk] 🎤 (Title) 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+                    float absolute = Mathf.Abs(sample);
+                    if (absolute > maxVal) maxVal = absolute;
+                    squareSum += sample * sample;
                 }
 
-                byte[] byteData = VoskPcmUtility.RentAndConvert(samples, out int byteCount);
-                commandQueue.Enqueue(new VoskCommand
+                if (sampleChunk.Length > 0)
                 {
-                    type = VoskCommandType.ProcessAudio,
-                    audioData = byteData,
-                    audioLength = byteCount
-                });
+                    float rms = Mathf.Sqrt((float)(squareSum / sampleChunk.Length));
+                    float detectedLevel = Mathf.Clamp01(rms * microphoneMeterSensitivity);
+                    microphoneInputLevel = Mathf.Max(microphoneInputLevel, detectedLevel);
+                }
+
+                // 離したフレームの語尾も、確定要求より先に必ずVoskへ渡す。
+                if (isHolding || isReleased)
+                {
+                    if (maxVal < 0.001f)
+                    {
+                        Debug.LogWarning("[Vosk] 🎤 (Title) 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+                    }
+
+                    byte[] byteData = VoskPcmUtility.RentAndConvert(sampleChunk, out int byteCount);
+                    commandQueue.Enqueue(new VoskCommand
+                    {
+                        type = VoskCommandType.ProcessAudio,
+                        audioData = byteData,
+                        audioLength = byteCount
+                    });
+                }
+            }
+            finally
+            {
+                ArrayPool<float>.Shared.Return(samples);
             }
         }
 

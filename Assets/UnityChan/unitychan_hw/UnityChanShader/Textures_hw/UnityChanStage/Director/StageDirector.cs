@@ -79,9 +79,18 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
 
     private IEnumerator InitializePerformanceRoutine()
     {
+        // Scene activation itself already has to run on the main thread.  Do not add the
+        // first large prefab clone to that same frame; let XR submit the activated scene
+        // once before starting the staged initialization.
+        initializationStatus = "シーン有効化を安定化中";
+        yield return null;
+
         initializationStatus = "音楽プレイヤーを準備中";
         if (musicPlayerPrefab != null)
         {
+            // Unity 6.5ではInstantiateAsync経由のAudioSourceから
+            // Audio Generator (AudioResource)参照が欠落することがある。
+            // 音楽プレイヤーだけは同期生成し、音源参照を確実に引き継ぐ。
             musicPlayer = Instantiate(musicPlayerPrefab);
             FreezeAnimators(musicPlayer);
         }
@@ -104,7 +113,10 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
             {
                 if (prefabsNeedsActivation[i] != null)
                 {
-                    objectsNeedsActivation[i] = Instantiate(prefabsNeedsActivation[i]);
+                    int objectIndex = i;
+                    yield return InstantiateForLoading(
+                        prefabsNeedsActivation[i],
+                        instance => objectsNeedsActivation[objectIndex] = instance);
                 }
                 yield return null;
             }
@@ -117,8 +129,14 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
             {
                 if (prefabsOnTimeline[i] != null)
                 {
-                    objectsOnTimeline[i] = Instantiate(prefabsOnTimeline[i]);
-                    FreezeAnimators(objectsOnTimeline[i]);
+                    int objectIndex = i;
+                    yield return InstantiateForLoading(
+                        prefabsOnTimeline[i],
+                        instance =>
+                        {
+                            objectsOnTimeline[objectIndex] = instance;
+                            FreezeAnimators(instance);
+                        });
                 }
                 yield return null;
             }
@@ -131,7 +149,7 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
             {
                 if (prefab != null)
                 {
-                    Instantiate(prefab);
+                    yield return InstantiateForLoading(prefab, null);
                 }
                 yield return null;
             }
@@ -174,12 +192,65 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
         yield return null;
         yield return null;
 
-        // Director・ダンス・LipSyncを同じフレームの0秒地点から開始する。
+        // ロード完了を先に通知してフェーダーを進める。ただし、この時点では
+        // Directorを停止したままにし、StartMusicのAnimation Eventを発火させない。
+        initializationComplete = true;
+        initializationStatus = "画面表示を待機中";
+        Debug.Log("[StageDirector] 分割初期化が完了しました。フェードイン完了まで演出開始を待機します。");
+
+        VRScreenFader screenFader = VRScreenFader.Instance;
+        while (screenFader != null && screenFader.IsSceneTransitioning)
+        {
+            yield return null;
+        }
+
+        // フェードキャンバスが完全に消えたフレームの次から、Director・ダンス・
+        // LipSyncを同じ0秒地点で開始する。これにより端末速度に依存して音だけが
+        // 黒画面中に先行することを防ぐ。
+        yield return null;
         if (directorAnimator != null) directorAnimator.speed = 1f;
         SetPerformanceAnimatorSpeed(1f);
-        initializationComplete = true;
-        initializationStatus = "準備完了";
-        Debug.Log("[StageDirector] 分割初期化が完了しました。パフォーマンスを同一フレームから開始します。");
+        initializationStatus = "演出開始済み";
+        Debug.Log("[StageDirector] フェードイン完了後にパフォーマンスを開始しました。");
+    }
+
+    /// <summary>
+    /// Unity 6 の非同期 Instantiate を使い、Prefab の複製準備をワーカースレッドへ逃がす。
+    /// Result の Unity オブジェクトへ触れるのは完了後のメインスレッドだけに限定する。
+    /// </summary>
+    private static IEnumerator InstantiateForLoading(
+        GameObject prefab,
+        System.Action<GameObject> onCompleted)
+    {
+        if (prefab == null) yield break;
+
+        float previousIntegrationTime = AsyncInstantiateOperation.GetIntegrationTimeMS();
+        AsyncInstantiateOperation<GameObject> operation = null;
+        try
+        {
+            // XRでは72Hz時に1フレーム約13.9msしかないため、完成オブジェクトを
+            // メインスレッドへ統合する処理も1フレームあたり1msに制限する。
+            AsyncInstantiateOperation.SetIntegrationTimeMS(1f);
+            operation = InstantiateAsync(prefab);
+            operation.priority = -1;
+            yield return operation;
+        }
+        finally
+        {
+            AsyncInstantiateOperation.SetIntegrationTimeMS(previousIntegrationTime);
+        }
+
+        GameObject instance = operation != null && operation.Result != null && operation.Result.Length > 0
+            ? operation.Result[0]
+            : null;
+
+        if (instance == null)
+        {
+            Debug.LogError($"[StageDirector] Prefab '{prefab.name}' の非同期生成に失敗しました。");
+            yield break;
+        }
+
+        onCompleted?.Invoke(instance);
     }
 
     private GameObject FindOrCreateCameraRig()

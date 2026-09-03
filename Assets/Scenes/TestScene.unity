@@ -554,6 +554,7 @@ GameObject:
   - component: {fileID: 1878753596}
   - component: {fileID: 1878753595}
   - component: {fileID: 1878753597}
+  - component: {fileID: 1878753598}
   m_Layer: 0
   m_Name: TestSceneVoiceManager
   m_TagString: Untagged
@@ -853,6 +854,7 @@ MonoBehaviour:
   playerTransformOverride: {fileID: 0}
   unityChanTransformOverride: {fileID: 0}
   leftPenlightOverride: {fileID: 0}
+  voiceCommandHud: {fileID: 1878753598}
 --- !u!4 &1878753596
 Transform:
   m_ObjectHideFlags: 0
@@ -908,6 +910,44 @@ MonoBehaviour:
     overridePlacement: 0
     localOffset: {x: 0, y: 0.25, z: 0.05}
     scale: 1
+--- !u!114 &1878753598
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45b3e9e56c2d4c14ab247f943c7caee2, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::VoiceCommandHUD
+  heading: "\u30DC\u30A4\u30B9\u30B3\u30DE\u30F3\u30C9"
+  commands:
+  - commandId: LookAt
+    displayText: "\u3053\u3063\u3061\u5411\u3044\u3066"
+  - commandId: Wave
+    displayText: "\u624B\u3092\u632F\u3063\u3066"
+  - commandId: Cute
+    displayText: "\u304B\u308F\u3044\u3044"
+  - commandId: UnityChanCall
+    displayText: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
+  japaneseFont: {fileID: 11400000, guid: 9f217eb13199f324fb763b886144d607, type: 2}
+  distanceFromCamera: 2
+  horizontalOffset: 0.75
+  verticalOffset: -0.05
+  positionFollowSpeed: 5
+  rotationFollowSpeed: 5
+  worldScale: 0.0014
+  panelColor: {r: 0.025, g: 0.035, b: 0.055, a: 0.78}
+  normalBackgroundColor: {r: 1, g: 1, b: 1, a: 0.1}
+  normalTextColor: {r: 1, g: 1, b: 1, a: 1}
+  highlightBackgroundColor: {r: 1, g: 0.22, b: 0.52, a: 0.94}
+  highlightTextColor: {r: 1, g: 1, b: 1, a: 1}
+  highlightScale: 1.08
+  fadeInDuration: 0.12
+  highlightHoldDuration: 1.5
+  fadeOutDuration: 0.35
 --- !u!1 &2059686874
 GameObject:
   m_ObjectHideFlags: 0
