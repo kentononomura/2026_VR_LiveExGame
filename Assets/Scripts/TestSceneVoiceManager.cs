@@ -246,6 +246,9 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [Tooltip("左手ペンライトの既存ゲージコントローラーです。未設定ならSaberのHandTypeから自動取得します。")]
     [SerializeField] private PenlightGaugeController leftPenlightOverride;
 
+    [Tooltip("ペンライトの軌跡、追尾ハート、到達ボーナスを管理します。未設定なら同じGameObjectから取得または生成します。")]
+    [SerializeField] private PenlightHeartFeature penlightHeartFeature;
+
     [Header("Voice Command HUD (Optional)")]
     [Tooltip("リアクションが成立したコマンドを強調表示します。未設定でも音声認識は継続します。")]
     [SerializeField] private VoiceCommandHUD voiceCommandHud;
@@ -319,6 +322,15 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         if (voiceCommandHud == null)
         {
             voiceCommandHud = GetComponent<VoiceCommandHUD>();
+        }
+
+        if (penlightHeartFeature == null)
+        {
+            penlightHeartFeature = GetComponent<PenlightHeartFeature>();
+            if (penlightHeartFeature == null)
+            {
+                penlightHeartFeature = gameObject.AddComponent<PenlightHeartFeature>();
+            }
         }
 
         // TestSceneでは右手にスマホカメラを持つため、右手のペンライト（Saber）を非表示にする
@@ -530,6 +542,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     void Update()
     {
         TrySetupUnityChan();
+        ConfigurePenlightHeartFeature();
 
         // Process queued results on main thread
         while (resultQueue.TryDequeue(out string result))
@@ -1353,8 +1366,35 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 : unityChanObj != null ? unityChanObj.transform : null;
         PenlightGaugeController leftPenlight = ResolveLeftPenlight();
 
-        return voicePointEvaluator != null &&
-               voicePointEvaluator.Evaluate(playerTransform, unityChanTransform, leftPenlight);
+        if (voicePointEvaluator == null)
+        {
+            return false;
+        }
+
+        float heartMultiplier = 1f;
+        bool heartBonusConsumed = false;
+        if (playerTransform != null && unityChanTransform != null && penlightHeartFeature != null)
+        {
+            heartBonusConsumed =
+                penlightHeartFeature.TryConsumeHeartBonus(out heartMultiplier);
+        }
+
+        return voicePointEvaluator.Evaluate(
+            playerTransform,
+            unityChanTransform,
+            leftPenlight,
+            heartMultiplier,
+            heartBonusConsumed);
+    }
+
+    private void ConfigurePenlightHeartFeature()
+    {
+        if (penlightHeartFeature == null || unityChanObj == null) return;
+
+        PenlightGaugeController leftPenlight = ResolveLeftPenlight();
+        if (leftPenlight == null) return;
+
+        penlightHeartFeature.Configure(leftPenlight, targetAnimator, unityChanObj.transform);
     }
 
     private Transform ResolvePlayerTransform()

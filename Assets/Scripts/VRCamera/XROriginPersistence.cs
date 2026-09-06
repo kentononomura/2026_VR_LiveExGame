@@ -224,8 +224,8 @@ public class XROriginPersistence : MonoBehaviour
         switch (sceneName)
         {
             case "TestScene":
-                // TestScene: ステージ正面 Z=4 の位置
-                transform.position = new Vector3(0f, transform.position.y, 4f);
+                // TestScene: ステージ正面 Z=6 の位置
+                transform.position = new Vector3(0f, transform.position.y, 6f);
                 transform.rotation = Quaternion.Euler(0f, 180f, 0f);
 
                 SetPhoneCameraActive(true);

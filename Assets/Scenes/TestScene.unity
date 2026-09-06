@@ -555,6 +555,7 @@ GameObject:
   - component: {fileID: 1878753595}
   - component: {fileID: 1878753597}
   - component: {fileID: 1878753598}
+  - component: {fileID: 1878753599}
   m_Layer: 0
   m_Name: TestSceneVoiceManager
   m_TagString: Untagged
@@ -854,6 +855,7 @@ MonoBehaviour:
   playerTransformOverride: {fileID: 0}
   unityChanTransformOverride: {fileID: 0}
   leftPenlightOverride: {fileID: 0}
+  penlightHeartFeature: {fileID: 1878753599}
   voiceCommandHud: {fileID: 1878753598}
 --- !u!4 &1878753596
 Transform:
@@ -910,6 +912,36 @@ MonoBehaviour:
     overridePlacement: 0
     localOffset: {x: 0, y: 0.25, z: 0.05}
     scale: 1
+--- !u!114 &1878753599
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41f755aa4c4d4a65b7f097e2e9d26c15, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PenlightHeartFeature
+  leftPenlight: {fileID: 0}
+  penlightTipAnchor: {fileID: 0}
+  characterAnimator: {fileID: 0}
+  characterRoot: {fileID: 0}
+  chestLocalOffset: {x: 0, y: 0.08, z: 0.05}
+  swingActivityGrace: 0.3
+  heartSpawnInterval: 0.45
+  trailTime: 0.2
+  trailStartWidth: 0.035
+  trailEndWidth: 0.008
+  heartFlightDuration: 0.8
+  heartSize: 0.16
+  heartArcHeight: 0.35
+  heartArcSide: 0.12
+  maxConcurrentHearts: 8
+  heartBonusMultiplier: 1.5
+  heartBonusDuration: 3
+  enableDebugLog: 0
 --- !u!114 &1878753598
 MonoBehaviour:
   m_ObjectHideFlags: 0

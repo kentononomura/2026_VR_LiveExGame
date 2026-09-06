@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR;
@@ -129,12 +130,21 @@ public class PenlightGaugeController : MonoBehaviour
     private float stationaryTime;
 
     /// <summary>
+    /// ノイズを除外した有効な振りによってゲージが増えたときに、今回の加算量を通知します。
+    /// 演出側がゲージ判定と同じ基準を利用できるようにするためのイベントです。
+    /// </summary>
+    public event Action<float> ValidSwingGaugeAdded;
+
+    /// <summary>
     /// 既存のゲージレベルを色状態として公開します。
     /// 色状態を別途保持せず、既存のcurrentLevelを唯一の情報源として使用します。
     /// </summary>
     public PenlightColorState CurrentColorState =>
         (PenlightColorState)Mathf.Clamp(currentLevel, 0, 3);
     public float CurrentGauge => currentGauge;
+    public Color CurrentColor => levelColors != null && levelColors.Length > 0
+        ? levelColors[Mathf.Clamp(currentLevel, 0, levelColors.Length - 1)]
+        : Color.white;
     
     // パフォーマンスのため、定期的にモデルの色を再適用するためのフラグ
     // （Saber.csのStartによるモデル生成の遅延対応）
@@ -217,7 +227,9 @@ public class PenlightGaugeController : MonoBehaviour
         if (saber.VelocityMagnitude <= shakeThreshold) return false;
 
         float intensity = Mathf.Clamp(saber.VelocityMagnitude - shakeThreshold, 0.5f, 5f);
-        currentGauge += gaugePerShake * intensity * Time.deltaTime;
+        float gaugeAdded = gaugePerShake * intensity * Time.deltaTime;
+        currentGauge += gaugeAdded;
+        NotifyValidSwingGaugeAdded(gaugeAdded);
         return true;
     }
 
@@ -326,8 +338,16 @@ public class PenlightGaugeController : MonoBehaviour
         float newProgress = Mathf.Max(0f, clampedProgress - awardedStrokeProgress);
         if (newProgress <= 0f) return;
 
-        currentGauge += newProgress * Mathf.Max(0f, gaugePerFullSwing);
+        float gaugeAdded = newProgress * Mathf.Max(0f, gaugePerFullSwing);
+        currentGauge += gaugeAdded;
         awardedStrokeProgress = clampedProgress;
+        NotifyValidSwingGaugeAdded(gaugeAdded);
+    }
+
+    private void NotifyValidSwingGaugeAdded(float amount)
+    {
+        if (amount <= 0f) return;
+        ValidSwingGaugeAdded?.Invoke(amount);
     }
 
     private void ResetSwingTracking(Vector3 position, Quaternion rotation)

@@ -47,7 +47,9 @@ public sealed class VoicePointEvaluator
     public bool Evaluate(
         Transform playerTransform,
         Transform unityChanTransform,
-        PenlightGaugeController leftPenlight)
+        PenlightGaugeController leftPenlight,
+        float heartMultiplier = 1f,
+        bool heartBonusConsumed = false)
     {
         if (playerTransform == null || unityChanTransform == null)
         {
@@ -68,7 +70,8 @@ public sealed class VoicePointEvaluator
                 ? leftPenlight.CurrentColorState
                 : PenlightGaugeController.PenlightColorState.Normal;
         float multiplier = GetMultiplier(colorState);
-        float finalPoint = basePoint * multiplier;
+        float safeHeartMultiplier = Mathf.Max(0f, heartMultiplier);
+        float finalPoint = basePoint * multiplier * safeHeartMultiplier;
         bool succeeded = finalPoint >= reactionThreshold;
 
         if (enableDebugLog)
@@ -76,6 +79,8 @@ public sealed class VoicePointEvaluator
             Debug.Log(
                 $"[VoicePoint] Distance: {distance:F2}m / Base: {basePoint:F1} / " +
                 $"Penlight: {colorState} / Multiplier: x{multiplier:F1} / " +
+                $"Heart: {(heartBonusConsumed ? "Consumed" : "None")} " +
+                $"(x{safeHeartMultiplier:F1}) / " +
                 $"Final: {finalPoint:F1} / Threshold: {reactionThreshold:F1} / " +
                 $"Result: {(succeeded ? "SUCCESS" : "FAILED")}");
         }

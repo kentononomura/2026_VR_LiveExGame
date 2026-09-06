@@ -1,92 +1,88 @@
-﻿// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
-// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
-
 Shader "Custom/Light Beam"
 {
     Properties
     {
-        _Color      ("Base Color", Color)    = (1, 1, 1, 1)
-        _MainTex    ("Gradient Texture", 2D) = ""{}
-        _NoiseTex1  ("Noise Texture 1", 2D)  = ""{}
-        _NoiseTex2  ("Noise Texture 2", 2D)  = ""{}
-        _NoiseScale ("Noise Scale", Vector)  = (1, 1, 1, 1)
-        _NoiseSpeed ("Noise Speed", Vector)  = (0.1, 0.1, 0.1, 0.1)
+        _Color("Base Color", Color) = (1, 1, 1, 1)
+        _MainTex("Gradient Texture", 2D) = "white" {}
+        _NoiseTex1("Noise Texture 1", 2D) = "white" {}
+        _NoiseTex2("Noise Texture 2", 2D) = "white" {}
+        _NoiseScale("Noise Scale", Vector) = (1, 1, 1, 1)
+        _NoiseSpeed("Noise Speed", Vector) = (0.1, 0.1, 0.1, 0.1)
     }
-
-    CGINCLUDE
-
-    #include "UnityCG.cginc"
-
-    struct v2f
-    {
-        float4 position : SV_POSITION;
-        float2 uv0 : TEXCOORD0;
-        float2 uv1 : TEXCOORD1;
-        float2 uv2 : TEXCOORD2;
-        float4 world_position : TEXCOORD3;
-        float3 normal : TEXCOORD4;
-    };
-
-    float4 _Color;
-
-    sampler2D _MainTex;
-    float4 _MainTex_ST;
-
-    sampler2D _NoiseTex1;
-    sampler2D _NoiseTex2;
-
-    float4 _NoiseScale;
-    float4 _NoiseSpeed;
-
-    v2f vert(appdata_base v)
-    {
-        v2f o;
-
-        o.position = UnityObjectToClipPos(v.vertex);
-
-        o.uv0 = TRANSFORM_TEX(v.texcoord, _MainTex);
-
-        float4 wp = mul(unity_ObjectToWorld, v.vertex);
-        o.uv1 = wp.xy * _NoiseScale.xy + _NoiseSpeed.xy * _Time.y;
-        o.uv2 = wp.xy * _NoiseScale.zw + _NoiseSpeed.zw * _Time.y;
-		o.world_position = v.vertex;
-		o.normal = normalize(mul(unity_ObjectToWorld, float4(v.normal.xyz,0.0)));
-
-        return o;
-    }
-
-    float4 frag(v2f i) : COLOR
-    {
-		float3 normal = i.normal;
-		float3 camDir = normalize(i.world_position - _WorldSpaceCameraPos);
-		float falloff = max(abs(dot(camDir, normal))-0.4, 0.0);
-		falloff = falloff * falloff * 5.0;
-
-        float4 c = _Color;
-
-        float n1 = tex2D(_NoiseTex1, i.uv1).r;
-        float n2 = tex2D(_NoiseTex2, i.uv2).r;
-
-        c.a *= tex2D(_MainTex, i.uv0).a * n1 * n2 * falloff;
-
-        return c;
-    }
-
-    ENDCG
 
     SubShader
     {
-        Tags { "RenderType"="Transparent" "Queue" = "Transparent" }
+        Tags { "RenderPipeline" = "UniversalPipeline" "RenderType" = "Transparent" "Queue" = "Transparent" }
+
         Pass
         {
-            ZWrite Off
+            Name "UniversalForward"
+            Tags { "LightMode" = "UniversalForward" }
             Blend SrcAlpha OneMinusSrcAlpha
-			Cull Off
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            ENDCG
+            Cull Off
+            ZWrite Off
+
+            HLSLPROGRAM
+            #pragma target 3.0
+            #pragma vertex Vert
+            #pragma fragment Frag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            TEXTURE2D(_MainTex);
+            SAMPLER(sampler_MainTex);
+            TEXTURE2D(_NoiseTex1);
+            SAMPLER(sampler_NoiseTex1);
+            TEXTURE2D(_NoiseTex2);
+            SAMPLER(sampler_NoiseTex2);
+
+            CBUFFER_START(UnityPerMaterial)
+                half4 _Color;
+                float4 _MainTex_ST;
+                float4 _NoiseScale;
+                float4 _NoiseSpeed;
+            CBUFFER_END
+
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                float2 uv : TEXCOORD0;
+                float2 noiseUv1 : TEXCOORD1;
+                float2 noiseUv2 : TEXCOORD2;
+                float3 positionWS : TEXCOORD3;
+                half3 normalWS : TEXCOORD4;
+            };
+
+            Varyings Vert(Attributes input)
+            {
+                Varyings output;
+                VertexPositionInputs positionInputs = GetVertexPositionInputs(input.positionOS.xyz);
+                output.positionCS = positionInputs.positionCS;
+                output.positionWS = positionInputs.positionWS;
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                output.uv = TRANSFORM_TEX(input.uv, _MainTex);
+                output.noiseUv1 = positionInputs.positionWS.xy * _NoiseScale.xy + _NoiseSpeed.xy * _Time.y;
+                output.noiseUv2 = positionInputs.positionWS.xy * _NoiseScale.zw + _NoiseSpeed.zw * _Time.y;
+                return output;
+            }
+
+            half4 Frag(Varyings input) : SV_Target
+            {
+                half3 cameraDirection = normalize(input.positionWS - GetCameraPositionWS());
+                half falloff = max(abs(dot(cameraDirection, normalize(input.normalWS))) - 0.4h, 0.0h);
+                falloff = falloff * falloff * 5.0h;
+                half gradient = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv).a;
+                half noise1 = SAMPLE_TEXTURE2D(_NoiseTex1, sampler_NoiseTex1, input.noiseUv1).r;
+                half noise2 = SAMPLE_TEXTURE2D(_NoiseTex2, sampler_NoiseTex2, input.noiseUv2).r;
+                return half4(_Color.rgb, _Color.a * gradient * noise1 * noise2 * falloff);
+            }
+            ENDHLSL
         }
-    } 
-    FallBack "Diffuse"
+    }
 }
