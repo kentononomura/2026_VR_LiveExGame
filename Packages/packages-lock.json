@@ -17,6 +17,13 @@
       },
       "hash": "c21bf496bca87d54e75bad048563c3adb1782081"
     },
+    "com.naosv.oeculogging": {
+      "version": "https://dench.mklab.osakac.ac.jp/git/com.naosv.oeculogging.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "35e1ab3f830ea4ca2856744bf075cd966c6e8b49"
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,

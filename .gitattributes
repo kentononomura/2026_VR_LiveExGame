@@ -3,6 +3,7 @@ Assets/StreamingAssets/vosk-model-small-ja-0.22/README text eol=lf
 Assets/StreamingAssets/vosk-model-small-ja-0.22/vosk-files.txt text eol=lf
 Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.conf text eol=lf
 Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.int text eol=lf
+Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.stats text eol=lf
 Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.txt text eol=lf
 Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.mdl binary
 Assets/StreamingAssets/vosk-model-small-ja-0.22/**/*.fst binary

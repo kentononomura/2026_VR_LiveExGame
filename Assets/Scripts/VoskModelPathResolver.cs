@@ -14,7 +14,9 @@ public static class VoskModelPathResolver
 {
     private const string FileListName = "vosk-files.txt";
     private const string InstallMarkerName = ".vosk-model-ready";
-    private const string InstallVersion = "2";
+    // モデル資産をLFへ正規化した版。Quest上に旧版の展開済みモデルがあっても
+    // 次回起動時に再検証し、不一致ファイルをStreamingAssetsから再展開する。
+    private const string InstallVersion = "3";
 
     public static IEnumerator Prepare(
         string modelFolderName,

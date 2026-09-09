@@ -457,6 +457,7 @@ public class TitleVoiceManager : MonoBehaviour
     {
         if (isTransitioning) return;
         isTransitioning = true;
+        OECULogging.GameStart();
 
         Debug.Log($"{targetSceneName} をロード中...");
         VRScreenFader.Instance.LoadSceneWithFade(targetSceneName, 1.0f);
