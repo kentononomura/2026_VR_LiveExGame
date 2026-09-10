@@ -28,6 +28,13 @@ public enum VoiceReactionPresentationMode
     Coordinated
 }
 
+public enum VoiceRecognitionInputMode
+{
+    PushToTalk = 0,
+    ContinuousFinalOnly = 1,
+    ContinuousEarlyCommand = 2
+}
+
 public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 {
     [Header("Vosk Settings")]
@@ -54,6 +61,17 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     };
 
     [Header("Input Settings")]
+    [Tooltip("PushToTalk: 従来の左トリガー操作。ContinuousFinalOnly: 常時受付・確定待ち。ContinuousEarlyCommand: 常時受付・途中結果で早期実行。Play中も切替可能。切替時は認識途中の音声を破棄します。")]
+    [SerializeField] private VoiceRecognitionInputMode inputMode = VoiceRecognitionInputMode.PushToTalk;
+
+    [Header("Continuous Recognition Experiment")]
+    [Tooltip("早期実行に必要な途中結果の安定時間（秒）。登録キーワードと全文一致した候補だけを使用します。発話終了からの応答時間ではありません。次の発話はVoskの確定結果後に受付可能になるため、コマンド間は間を空けてください。")]
+    [Range(0f, 1f)]
+    [SerializeField] private float earlyCommandStableDuration = 0.15f;
+
+    [Tooltip("検証ログを [VoiceExperiment] で出力。音声投入から結果受信までとリアクション要求までを測定します。実際に見えるアニメーション開始時刻は測定しません。")]
+    [SerializeField] private bool showExperimentTimingLog = true;
+
 #if ENABLE_INPUT_SYSTEM
     [Tooltip("左手トリガーで音声認識を開始します")]
     public InputAction pushToTalkAction = new InputAction("PushToTalk", InputActionType.Button, "<XRController>{LeftHand}/triggerPressed");
@@ -274,6 +292,15 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     private bool hasHandledRecognitionThisPress;
     private KeywordReaction stablePartialCandidate;
     private float stablePartialSince;
+    private VoiceRecognitionInputMode appliedInputMode = (VoiceRecognitionInputMode)(-1);
+    private bool continuousInputSuspended;
+    private int recognitionGeneration;
+    private double earlyCandidateSince;
+    private double recognitionAcceptedAt;
+    private double earlyExecutedAt;
+    private bool IsContinuous => inputMode != VoiceRecognitionInputMode.PushToTalk;
+    private static double RecognitionClock =>
+        (double)System.Diagnostics.Stopwatch.GetTimestamp() / System.Diagnostics.Stopwatch.Frequency;
     private float[] preRollBuffer;
     private int preRollWriteIndex;
     private int preRollSampleCount;
@@ -295,10 +322,22 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         public VoskCommandType type;
         public byte[] audioData;
         public int audioLength;
+        public int generation;
+        public bool includePartial;
+        public double submittedAt;
+    }
+
+    private struct RecognitionPacket
+    {
+        public string json;
+        public int generation;
+        public bool isFinal;
+        public double submittedAt;
+        public double producedAt;
     }
     
     private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
-    private ConcurrentQueue<string> resultQueue = new ConcurrentQueue<string>();
+    private ConcurrentQueue<RecognitionPacket> resultQueue = new ConcurrentQueue<RecognitionPacket>();
     private Thread workerThread;
 
     public bool IsSceneLoadReady =>
@@ -420,7 +459,11 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                     {
                         if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioLength))
                         {
-                            resultQueue.Enqueue(recognizer.Result());
+                            QueueRecognitionResult(cmd, recognizer.Result(), true);
+                        }
+                        else if (cmd.includePartial)
+                        {
+                            QueueRecognitionResult(cmd, recognizer.PartialResult(), false);
                         }
                     }
                     finally
@@ -430,7 +473,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 }
                 else if (cmd.type == VoskCommandType.FinalResult)
                 {
-                    resultQueue.Enqueue(recognizer.FinalResult());
+                    QueueRecognitionResult(cmd, recognizer.FinalResult(), true);
                 }
             }
             else
@@ -539,15 +582,81 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         }
     }
 
+    private void QueueRecognitionResult(VoskCommand command, string json, bool isFinal)
+    {
+        resultQueue.Enqueue(new RecognitionPacket
+        {
+            json = json,
+            generation = command.generation,
+            isFinal = isFinal,
+            submittedAt = command.submittedAt,
+            producedAt = RecognitionClock
+        });
+    }
+
+    private void UpdateRecognitionMode()
+    {
+        bool suspend = IsContinuous && (!Application.isFocused || Time.timeScale == 0f);
+        if (appliedInputMode == inputMode && continuousInputSuspended == suspend) return;
+
+        appliedInputMode = inputMode;
+        continuousInputSuspended = suspend;
+        recognitionGeneration++;
+        // The worker may already be processing an old command. Generation tags also
+        // reject its eventual result after this reset, without touching Vosk off-thread.
+        while (commandQueue.TryDequeue(out VoskCommand pending))
+            VoskPcmUtility.Return(pending.audioData);
+        while (resultQueue.TryDequeue(out _)) { }
+        commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
+        ResetRecognitionMatchState();
+        isLeftTriggerDown = false;
+        isPostRollActive = false;
+        postRollSamplesRemaining = 0;
+        shouldSendPreRoll = false;
+        preRollSampleCount = 0;
+        preRollWriteIndex = 0;
+        if (isListening && audioClip != null)
+        {
+            int position = Microphone.GetPosition(microphoneDevice);
+            if (position >= 0) lastSamplePosition = position;
+        }
+        if (showExperimentTimingLog)
+            Debug.Log($"[VoiceExperiment] mode={inputMode} suspended={suspend} t={RecognitionClock:F3}s");
+    }
+
+    private void ProcessRecognitionPacket(RecognitionPacket packet)
+    {
+        if (packet.generation != recognitionGeneration || continuousInputSuspended) return;
+        try
+        {
+            if (showExperimentTimingLog && packet.isFinal)
+            {
+                string early = earlyExecutedAt > 0d
+                    ? $" early-to-final={(RecognitionClock - earlyExecutedAt) * 1000d:F1}ms" : "";
+                Debug.Log($"[VoiceExperiment] final mode={inputMode} t={RecognitionClock:F3}s" +
+                    $" submit-to-result={(packet.producedAt - packet.submittedAt) * 1000d:F1}ms" +
+                    $" result-to-main={(RecognitionClock - packet.producedAt) * 1000d:F1}ms{early} json={packet.json}");
+            }
+            ProcessRecognitionResult(packet.json, packet.submittedAt);
+        }
+        finally
+        {
+            // A final result (including an empty one) closes the utterance. Keep the
+            // early-execution latch until here, then allow the next spoken command.
+            if (IsContinuous && packet.isFinal) ResetRecognitionMatchState();
+        }
+    }
+
     void Update()
     {
         TrySetupUnityChan();
         ConfigurePenlightHeartFeature();
+        UpdateRecognitionMode();
 
         // Process queued results on main thread
-        while (resultQueue.TryDequeue(out string result))
+        while (resultQueue.TryDequeue(out RecognitionPacket result))
         {
-            ProcessRecognitionResult(result);
+            ProcessRecognitionPacket(result);
         }
 
         // PTT（プッシュ・トゥ・トーク）入力判定を先に実行（早期リターンの前へ！）
@@ -580,7 +689,11 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         }
 
         bool shouldFinalize = false;
-        if (isTriggerPressed)
+        if (IsContinuous)
+        {
+            isHolding = !continuousInputSuspended;
+        }
+        else if (isTriggerPressed)
         {
             if (!isLeftTriggerDown)
             {
@@ -681,7 +794,12 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 
         if (shouldFinalize)
         {
-            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
+            commandQueue.Enqueue(new VoskCommand
+            {
+                type = VoskCommandType.FinalResult,
+                generation = recognitionGeneration,
+                submittedAt = RecognitionClock
+            });
             Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
         }
     }
@@ -777,7 +895,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             float absVal = Mathf.Abs(sample);
             if (absVal > maxVal) maxVal = absVal;
         }
-        if (maxVal < 0.001f)
+        if (maxVal < 0.001f && !IsContinuous)
         {
             Debug.LogWarning("[Vosk] 🎤 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
         }
@@ -787,7 +905,10 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         {
             type = VoskCommandType.ProcessAudio,
             audioData = byteData,
-            audioLength = byteCount
+            audioLength = byteCount,
+            generation = recognitionGeneration,
+            includePartial = inputMode == VoiceRecognitionInputMode.ContinuousEarlyCommand,
+            submittedAt = RecognitionClock
         });
     }
 
@@ -1027,7 +1148,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         return aimConstraint;
     }
 
-    private void ProcessRecognitionResult(string jsonResult)
+    private void ProcessRecognitionResult(string jsonResult, double submittedAt)
     {
         if (string.IsNullOrEmpty(jsonResult) || hasHandledRecognitionThisPress) return;
 
@@ -1045,7 +1166,11 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 
         bool isFinalResult = recognitionResult.text != null;
         string recognizedText = isFinalResult ? recognitionResult.text : recognitionResult.partial;
-        if (string.IsNullOrWhiteSpace(recognizedText)) return;
+        if (string.IsNullOrWhiteSpace(recognizedText))
+        {
+            stablePartialCandidate = null;
+            return;
+        }
 
         if (showRecognitionLog && isFinalResult)
         {
@@ -1053,7 +1178,36 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         }
 
         string normalizedText = NormalizeRecognitionText(recognizedText);
-        if (normalizedText.Length == 0) return;
+        if (normalizedText.Length == 0)
+        {
+            stablePartialCandidate = null;
+            return;
+        }
+
+        if (!isFinalResult && inputMode == VoiceRecognitionInputMode.ContinuousEarlyCommand)
+        {
+            // Whole-keyword equality only: do not fire on a substring, unknown words,
+            // or a fuzzy hypothesis that Vosk may revise in the next audio chunk.
+            KeywordReaction candidate = keywordReactions.Find(reaction =>
+                NormalizeRecognitionText(reaction.keyword) == normalizedText);
+            if (candidate == null)
+            {
+                stablePartialCandidate = null;
+                return;
+            }
+            if (stablePartialCandidate != candidate)
+            {
+                stablePartialCandidate = candidate;
+                earlyCandidateSince = submittedAt;
+                if (showExperimentTimingLog)
+                    Debug.Log($"[VoiceExperiment] candidate={candidate.keyword} t={RecognitionClock:F3}s");
+                if (earlyCommandStableDuration > 0f) return;
+            }
+            // Use the audio submission timeline, not the frame that drains the queue.
+            if (submittedAt - earlyCandidateSince < earlyCommandStableDuration) return;
+            AcceptRecognizedCommand(candidate, recognizedText, 1f, true, submittedAt);
+            return;
+        }
 
         KeywordReaction matchedReaction = FindExactMatch(normalizedText);
         float matchSimilarity = matchedReaction != null ? 1f : 0f;
@@ -1085,7 +1239,19 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             }
         }
 
+        AcceptRecognizedCommand(matchedReaction, recognizedText, matchSimilarity, false, submittedAt);
+    }
+
+    private void AcceptRecognizedCommand(KeywordReaction matchedReaction, string recognizedText,
+        float matchSimilarity, bool early, double submittedAt)
+    {
         hasHandledRecognitionThisPress = true;
+        recognitionAcceptedAt = RecognitionClock;
+        if (early) earlyExecutedAt = recognitionAcceptedAt;
+        if (showExperimentTimingLog)
+            Debug.Log($"[VoiceExperiment] accepted mode={inputMode} source={(early ? "partial" : "final")}" +
+                $" command={matchedReaction.keyword} t={recognitionAcceptedAt:F3}s" +
+                $" submit-to-accept={(recognitionAcceptedAt - submittedAt) * 1000d:F1}ms");
         Debug.Log($"[Vosk] キーワード検知: {matchedReaction.keyword} / 認識: {recognizedText} / 類似度: {matchSimilarity:F2} -> 表情: {matchedReaction.reactionName} / 体: {matchedReaction.bodyReactionName}");
         ExecuteReaction(matchedReaction);
     }
@@ -1096,6 +1262,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         // ポイントは保持・蓄積しない。
         if (!EvaluateCurrentVoicePoint())
         {
+            if (showExperimentTimingLog) Debug.Log("[VoiceExperiment] reaction=point-rejected");
             return;
         }
 
@@ -1188,6 +1355,11 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 reactionStarted = true;
             }
         }
+
+        if (showExperimentTimingLog)
+            Debug.Log($"[VoiceExperiment] reaction={(reactionStarted ? "requested" : "no-target")}" +
+                $" command={kr.keyword} t={RecognitionClock:F3}s" +
+                $" accept-to-request={(RecognitionClock - recognitionAcceptedAt) * 1000d:F1}ms");
 
         if (reactionStarted)
         {
@@ -1355,6 +1527,8 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         hasHandledRecognitionThisPress = false;
         stablePartialCandidate = null;
         stablePartialSince = 0f;
+        earlyCandidateSince = 0d;
+        earlyExecutedAt = 0d;
     }
 
     private bool EvaluateCurrentVoicePoint()
@@ -1368,6 +1542,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 
         if (voicePointEvaluator == null)
         {
+            if (voiceCommandHud != null) voiceCommandHud.ShowVoicePoint(null);
             return false;
         }
 
@@ -1379,12 +1554,16 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 penlightHeartFeature.TryConsumeHeartBonus(out heartMultiplier);
         }
 
-        return voicePointEvaluator.Evaluate(
+        bool succeeded = voicePointEvaluator.Evaluate(
             playerTransform,
             unityChanTransform,
             leftPenlight,
+            out VoicePointEvaluator.EvaluationResult? result,
             heartMultiplier,
             heartBonusConsumed);
+        // 成否にかかわらず、ハート消費も含めて実際に判定した値を表示する。
+        if (voiceCommandHud != null) voiceCommandHud.ShowVoicePoint(result);
+        return succeeded;
     }
 
     private void ConfigurePenlightHeartFeature()

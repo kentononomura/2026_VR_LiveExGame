@@ -416,6 +416,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StageDirector
   ignoreFastForward: 1
+  unityChanScaleMultiplier: 1.1333333
   musicPlayerPrefab: {fileID: 100000, guid: 2b9a716c1d31d45a5b906738bd5ee33e, type: 3}
   mainCameraRigPrefab: {fileID: 8083774992092227344, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
   prefabsNeedsActivation:
@@ -590,6 +591,9 @@ MonoBehaviour:
   - "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
   - "\u30E6\u30CB\u30C6\u30A3 \u3061\u3083\u3093"
   - '[unk]'
+  inputMode: 0
+  earlyCommandStableDuration: 0.15
+  showExperimentTimingLog: 1
   pushToTalkAction:
     m_Name: PushToTalk
     m_Type: 0
@@ -613,41 +617,121 @@ MonoBehaviour:
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3061\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3080\u3044\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u898B\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u307F\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u898B\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u307F\u3066"
     reactionName: smile1@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u624B\u632F\u3063\u3066"
     reactionName: smile2@unitychan
@@ -655,6 +739,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u624B\u3092\u632F\u3063\u3066"
     reactionName: smile2@unitychan
@@ -662,6 +754,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u3066\u632F\u3063\u3066"
     reactionName: smile2@unitychan
@@ -669,6 +769,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u632F\u3063\u3066"
     reactionName: smile2@unitychan
@@ -676,6 +784,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u3075\u3063\u3066"
     reactionName: smile2@unitychan
@@ -683,6 +799,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Cute
     keyword: "\u304B\u308F\u3044\u3044"
     reactionName: smile3@unitychan
@@ -690,6 +814,14 @@ MonoBehaviour:
     bodyReactionLayerName: 
     bodyReturnStartNormalizedTime: 0.875
     bodyReturnBlendDuration: 0.9
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Cute
     keyword: "\u6CB3\u4E95"
     reactionName: smile3@unitychan
@@ -697,6 +829,14 @@ MonoBehaviour:
     bodyReactionLayerName: 
     bodyReturnStartNormalizedTime: 0.875
     bodyReturnBlendDuration: 0.9
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Cute
     keyword: "\u53EF\u611B\u3044"
     reactionName: smile3@unitychan
@@ -704,6 +844,14 @@ MonoBehaviour:
     bodyReactionLayerName: 
     bodyReturnStartNormalizedTime: 0.875
     bodyReturnBlendDuration: 0.9
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Cute
     keyword: "\u304B\u308F\u3044"
     reactionName: smile3@unitychan
@@ -711,6 +859,14 @@ MonoBehaviour:
     bodyReactionLayerName: 
     bodyReturnStartNormalizedTime: 0.875
     bodyReturnBlendDuration: 0.9
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Cute
     keyword: "\u5DDD\u4E95"
     reactionName: smile3@unitychan
@@ -718,11 +874,29 @@ MonoBehaviour:
     bodyReactionLayerName: 
     bodyReturnStartNormalizedTime: 0.875
     bodyReturnBlendDuration: 0.9
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: Default
     keyword: "\u30C7\u30D5\u30A9\u30EB\u30C8"
     reactionName: default@unitychan
     bodyReactionName: 
     bodyReactionLayerName: 
+    bodyReturnStartNormalizedTime: -1
+    bodyReturnBlendDuration: -1
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
     reactionName: default@unitychan
@@ -730,6 +904,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u30C6\u30A3\u30FC\u3061\u3083\u3093"
     reactionName: default@unitychan
@@ -737,6 +919,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u3061\u3083\u3093"
     reactionName: default@unitychan
@@ -744,6 +934,14 @@ MonoBehaviour:
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
     bodyReturnBlendDuration: 0.7
+    overrideLookAtStrength: 0
+    lookAtStrength: 0.4
+    overrideEyeContactStrength: 0
+    eyeContactStrength: 0.8
+    overrideUpperBodyFacingStrength: 0
+    upperBodyFacingStrength: 0.2
+    overrideLookAtHoldDuration: 0
+    lookAtHoldDuration: 3
   enableFuzzyMatching: 1
   partialSimilarityThreshold: 0.8
   finalSimilarityThreshold: 0.7
@@ -912,36 +1110,6 @@ MonoBehaviour:
     overridePlacement: 0
     localOffset: {x: 0, y: 0.25, z: 0.05}
     scale: 1
---- !u!114 &1878753599
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1878753594}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41f755aa4c4d4a65b7f097e2e9d26c15, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::PenlightHeartFeature
-  leftPenlight: {fileID: 0}
-  penlightTipAnchor: {fileID: 0}
-  characterAnimator: {fileID: 0}
-  characterRoot: {fileID: 0}
-  chestLocalOffset: {x: 0, y: 0.08, z: 0.05}
-  swingActivityGrace: 0.3
-  heartSpawnInterval: 0.45
-  trailTime: 0.2
-  trailStartWidth: 0.035
-  trailEndWidth: 0.008
-  heartFlightDuration: 0.8
-  heartSize: 0.16
-  heartArcHeight: 0.35
-  heartArcSide: 0.12
-  maxConcurrentHearts: 8
-  heartBonusMultiplier: 1.5
-  heartBonusDuration: 3
-  enableDebugLog: 0
 --- !u!114 &1878753598
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -952,7 +1120,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45b3e9e56c2d4c14ab247f943c7caee2, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VoiceCommandHUD
   heading: "\u30DC\u30A4\u30B9\u30B3\u30DE\u30F3\u30C9"
   commands:
@@ -980,6 +1148,36 @@ MonoBehaviour:
   fadeInDuration: 0.12
   highlightHoldDuration: 1.5
   fadeOutDuration: 0.35
+--- !u!114 &1878753599
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41f755aa4c4d4a65b7f097e2e9d26c15, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PenlightHeartFeature
+  leftPenlight: {fileID: 0}
+  penlightTipAnchor: {fileID: 0}
+  characterAnimator: {fileID: 0}
+  characterRoot: {fileID: 0}
+  chestLocalOffset: {x: 0, y: 0.08, z: 0.05}
+  swingActivityGrace: 0.3
+  heartSpawnInterval: 0.45
+  trailTime: 0.2
+  trailStartWidth: 0.035
+  trailEndWidth: 0.008
+  heartFlightDuration: 0.8
+  heartSize: 0.16
+  heartArcHeight: 0.35
+  heartArcSide: 0.12
+  maxConcurrentHearts: 8
+  heartBonusMultiplier: 1.5
+  heartBonusDuration: 3
+  enableDebugLog: 0
 --- !u!1 &2059686874
 GameObject:
   m_ObjectHideFlags: 0

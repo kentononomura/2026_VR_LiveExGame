@@ -71,6 +71,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     private readonly List<ItemVisual> itemList = new List<ItemVisual>();
 
     private RectTransform canvasRect;
+    private TMP_Text voicePointText;
     private Coroutine highlightCoroutine;
     private bool hasInitialPlacement;
 
@@ -127,6 +128,24 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         highlightCoroutine = StartCoroutine(PlayHighlightRoutine(target));
     }
 
+    /// <summary>直近の声かけ判定を、次の判定まで表示します。表示のための再計算は行いません。</summary>
+    public void ShowVoicePoint(VoicePointEvaluator.EvaluationResult? result)
+    {
+        if (voicePointText == null) BuildHUD();
+        if (!result.HasValue)
+        {
+            voicePointText.text = "音声ポイント: 計算できません";
+            return;
+        }
+
+        VoicePointEvaluator.EvaluationResult value = result.Value;
+        voicePointText.text =
+            $"直近の音声ポイント: {value.FinalPoint:F2}点\n" +
+            $"必要 {value.Threshold:F2}点 / {(value.Succeeded ? "成功" : "不足")}\n" +
+            $"距離 {value.Distance:F2}m / 基礎 {value.BasePoint:F2}点\n" +
+            $"ペンライト x{value.PenlightMultiplier:F2} / ハート x{value.HeartMultiplier:F2}";
+    }
+
     private void BuildHUD()
     {
         if (canvasRect != null) return;
@@ -144,7 +163,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         canvas.sortingOrder = 50;
 
         canvasRect = canvasObject.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(560f, 430f);
+        float commandAreaHeight = Mathf.Max(430f, 134f + (commands?.Count ?? 0) * 74f);
+        canvasRect.sizeDelta = new Vector2(560f, commandAreaHeight + 150f);
         canvasRect.localScale = Vector3.one * worldScale;
 
         Image panel = CreateImage("Panel", canvasRect, panelColor);
@@ -171,6 +191,19 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         headingRect.sizeDelta = new Vector2(500f, 62f);
         headingText.alignment = TextAlignmentOptions.Center;
         headingText.fontStyle = FontStyles.Bold;
+
+        voicePointText = CreateText("Voice Point Debug", canvasRect,
+            "直近の音声ポイント: --\n声かけを認識すると表示します", 26f);
+        RectTransform pointRect = voicePointText.rectTransform;
+        pointRect.anchorMin = new Vector2(0.5f, 1f);
+        pointRect.anchorMax = new Vector2(0.5f, 1f);
+        pointRect.pivot = new Vector2(0.5f, 1f);
+        pointRect.anchoredPosition = new Vector2(0f, -commandAreaHeight);
+        pointRect.sizeDelta = new Vector2(500f, 132f);
+        voicePointText.alignment = TextAlignmentOptions.TopLeft;
+        voicePointText.enableAutoSizing = true;
+        voicePointText.fontSizeMin = 20f;
+        voicePointText.fontSizeMax = 26f;
 
         items.Clear();
         itemList.Clear();

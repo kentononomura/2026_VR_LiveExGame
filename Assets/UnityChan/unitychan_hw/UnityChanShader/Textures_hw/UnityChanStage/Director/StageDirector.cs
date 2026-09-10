@@ -16,6 +16,9 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
     public GameObject[] prefabsOnTimeline;
     public GameObject[] miscPrefabs;
 
+    [Tooltip("生成するUnityちゃんの全軸に適用する拡大率。1で元のサイズです。")]
+    [Min(0.01f)] public float unityChanScaleMultiplier = 1f;
+
     // Camera points.
     public Transform[] cameraPoints;
 
@@ -135,6 +138,10 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
                         instance =>
                         {
                             objectsOnTimeline[objectIndex] = instance;
+                            if (instance.GetComponentInChildren<UnityChan.FaceUpdate>(true) != null)
+                            {
+                                instance.transform.localScale *= unityChanScaleMultiplier;
+                            }
                             FreezeAnimators(instance);
                         });
                 }

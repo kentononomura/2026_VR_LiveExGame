@@ -528,6 +528,8 @@ public sealed class PenlightHeartFeature : MonoBehaviour
         GameObject particleObject = new GameObject(objectName);
         particleObject.transform.SetParent(parent, false);
         ParticleSystem particles = particleObject.AddComponent<ParticleSystem>();
+        // AddComponent starts playback on an active object; stop before changing duration.
+        particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
         ParticleSystem.MainModule main = particles.main;
         main.loop = loop;

@@ -64,6 +64,8 @@ public class TitleVoiceManager : MonoBehaviour
     private bool wasLeftPrimaryPressed = false;
     private float microphoneInputLevel;
     private float lastMicrophoneDataTime = -1f;
+    private float silentInputDuration;
+    private bool hasWarnedAboutSilentInput;
     private string voiceModelStatus = "モデル準備待ち";
 
     private const int SampleRate = 16000;
@@ -361,6 +363,8 @@ public class TitleVoiceManager : MonoBehaviour
         // プッシュ・トゥ・トークのトリガーイベント
         if (isPressedDown)
         {
+            silentInputDuration = 0f;
+            hasWarnedAboutSilentInput = false;
             commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
             Debug.Log($"<color=#00FF00>[Vosk] 🎤 ライブスタートの聞き取りを開始しました（ボタン長押し中）</color>");
         }
@@ -400,7 +404,16 @@ public class TitleVoiceManager : MonoBehaviour
                 {
                     if (maxVal < 0.001f)
                     {
-                        Debug.LogWarning("[Vosk] 🎤 (Title) 音声データが極端に小さいか無音です。マイクがミュートされているか、正しいマイクデバイスが選択されていない可能性があります。");
+                        silentInputDuration += (float)sampleCount / audioClip.frequency;
+                        if (silentInputDuration >= 2f && !hasWarnedAboutSilentInput)
+                        {
+                            hasWarnedAboutSilentInput = true;
+                            Debug.LogWarning("[Vosk] 🎤 (Title) 音声入力が2秒以上無音です。マイクのミュートと選択デバイスを確認してください。");
+                        }
+                    }
+                    else
+                    {
+                        silentInputDuration = 0f;
                     }
 
                     byte[] byteData = VoskPcmUtility.RentAndConvert(sampleChunk, out int byteCount);

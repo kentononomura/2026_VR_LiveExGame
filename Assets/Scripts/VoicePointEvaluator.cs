@@ -8,6 +8,29 @@ using UnityEngine;
 [Serializable]
 public sealed class VoicePointEvaluator
 {
+    public readonly struct EvaluationResult
+    {
+        public readonly float Distance;
+        public readonly float BasePoint;
+        public readonly float PenlightMultiplier;
+        public readonly float HeartMultiplier;
+        public readonly float FinalPoint;
+        public readonly float Threshold;
+        public readonly bool Succeeded;
+
+        public EvaluationResult(float distance, float basePoint, float penlightMultiplier,
+            float heartMultiplier, float finalPoint, float threshold, bool succeeded)
+        {
+            Distance = distance;
+            BasePoint = basePoint;
+            PenlightMultiplier = penlightMultiplier;
+            HeartMultiplier = heartMultiplier;
+            FinalPoint = finalPoint;
+            Threshold = threshold;
+            Succeeded = succeeded;
+        }
+    }
+
     [Header("Voice Point Requirement")]
     [Tooltip("リアクション成立に必要な最終音声ポイントです。")]
     [Min(0f)]
@@ -48,9 +71,11 @@ public sealed class VoicePointEvaluator
         Transform playerTransform,
         Transform unityChanTransform,
         PenlightGaugeController leftPenlight,
+        out EvaluationResult? result,
         float heartMultiplier = 1f,
         bool heartBonusConsumed = false)
     {
+        result = null;
         if (playerTransform == null || unityChanTransform == null)
         {
             if (enableDebugLog)
@@ -73,6 +98,8 @@ public sealed class VoicePointEvaluator
         float safeHeartMultiplier = Mathf.Max(0f, heartMultiplier);
         float finalPoint = basePoint * multiplier * safeHeartMultiplier;
         bool succeeded = finalPoint >= reactionThreshold;
+        result = new EvaluationResult(distance, basePoint, multiplier, safeHeartMultiplier,
+            finalPoint, reactionThreshold, succeeded);
 
         if (enableDebugLog)
         {
