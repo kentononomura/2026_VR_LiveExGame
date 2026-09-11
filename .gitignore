@@ -104,3 +104,6 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+# Embedded Animation Rigging samples are required by its package.json.
+!/Packages/com.unity.animation.rigging/Samples~/ConstraintSamples/*.unitypackage
+!/Packages/com.unity.animation.rigging/Samples~/ConstraintSamples/*.unitypackage.meta
