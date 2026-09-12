@@ -1,0 +1,43 @@
+{
+    "<OutputFolderPath>k__BackingField": {
+        "_value": "Assets/ShirayuriMeshibe/Scenes/ParticleAudience/SharedAssets/EmitterMeshes"
+    },
+    "<MeshBuildDirection>k__BackingField": {
+        "_value": 0
+    },
+    "<Sort>k__BackingField": {
+        "_value": 1
+    },
+    "<AudienceDistanceX>k__BackingField": {
+        "_value": 0.4000000059604645
+    },
+    "<AudienceDistanceZ>k__BackingField": {
+        "_value": 0.4000000059604645
+    },
+    "<AudienceRandomDistance>k__BackingField": {
+        "_value": 0.12999999523162843
+    },
+    "<AudienceCountX>k__BackingField": {
+        "_value": 40
+    },
+    "<AudienceCountZ>k__BackingField": {
+        "_value": 30
+    },
+    "<RandomSeed>k__BackingField": {
+        "_value": 346969
+    },
+    "<AreaSettings>k__BackingField": {
+        "_value": [
+            {
+                "Name": "Area0",
+                "Weight": 1.0,
+                "Headcount": 600
+            },
+            {
+                "Name": "Area1",
+                "Weight": 1.0,
+                "Headcount": 600
+            }
+        ]
+    }
+}

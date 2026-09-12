@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AudienceB(LOD2)
+  m_Shader: {fileID: 4800000, guid: e463f84360cf8d944afedde267d9a18f, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - APPLY_MATCAP
+  m_InvalidKeywords:
+  - _FOGMODE_NONE
+  - _PLAYMODE_IDLE
+  - _TIMEUPDATEMODE_AUTO
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _ColorTex:
+        m_Texture: {fileID: 2800000, guid: 6f98c975d873a9b4fa35cebbc4454bc5, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ColorTexture:
+        m_Texture: {fileID: 2800000, guid: 71cf311bd26277345a015a73e641850b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MatCapTexture:
+        m_Texture: {fileID: 2800000, guid: f6b20808c209ed0428375f06462e1987, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalTexture:
+        m_Texture: {fileID: 2800000, guid: d16fce0ca396e3b4eb6dad363be34c02, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalsTex:
+        m_Texture: {fileID: 2800000, guid: 8e5ceb1b8dfb72747a6c85ebea70c0bc, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PositionTexture:
+        m_Texture: {fileID: 2800000, guid: 7c076d4e82026e94bbdf57f9819e842b, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PositionsTex:
+        m_Texture: {fileID: 2800000, guid: b153cd3630a5e464592678a2a78be82b, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TangentTexture:
+        m_Texture: {fileID: 2800000, guid: b1b75d0ca633fdb47b613e55a80bb8a5, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _ApplyJumpDoubleSpeed: 0
+    - _ApplyMatCap: 1
+    - _Blend1: 0
+    - _Blend2: 0
+    - _Blend3: 0
+    - _Blend4: 0
+    - _Cull: 2
+    - _EmissionIntensity: 1
+    - _FogEnd: 10
+    - _FogHeightEnd: 1.5
+    - _FogHeightStart: 0.5
+    - _FogMode: 0
+    - _FogStart: 0.5
+    - _Framecount: 320
+    - _ManualTime: 0
+    - _Metalness: 0
+    - _PlayMode: 0
+    - _RandomDelay: 0.3
+    - _Roughness: 1
+    - _Speed: 0.8333333
+    - _Speed2: 1
+    - _TimeUpdateMode: 0
+    - _Timeposition: 0
+    - _Timeposition2: 0
+    - _Timeposition3: 0
+    - __dirty: 1
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 0}
+    - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
+    - _FogColorBottom: {r: 1, g: 1, b: 1, a: 1}
+    - _FogColorTop: {r: 1, g: 1, b: 1, a: 1}
+    - _MatCapColor: {r: 14.754423, g: 9.347042, b: 7.64758, a: 1}
+    - _PenLightColor: {r: 3.4415908, g: 3.4415908, b: 3.4415908, a: 1}
+    - _TintColor: {r: 0.16078432, g: 0.14509805, b: 0.14117648, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

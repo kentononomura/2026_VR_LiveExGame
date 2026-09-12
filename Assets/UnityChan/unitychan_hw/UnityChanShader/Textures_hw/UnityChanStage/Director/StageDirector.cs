@@ -371,6 +371,15 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
 
     }
 
+    public bool TryGetAudienceMusicTime(out float seconds)
+    {
+        seconds = 0f;
+        if (!musicStartHandled || masterAudioSource == null || !masterAudioSource.isPlaying ||
+            (synchronizePerformanceToMusic && AudioSettings.dspTime < scheduledMusicDspTime)) return false;
+        seconds = GetMasterAudioTime();
+        return true;
+    }
+
     public void StartMusic()
     {
         if (musicStartHandled)

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e463f84360cf8d944afedde267d9a18f
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures:
+  - _PositionTexture: {instanceID: 0}
+  - _NormalTexture: {instanceID: 0}
+  - _TangentTexture: {instanceID: 0}
+  - _ColorTexture: {instanceID: 0}
+  - _MatCapTexture: {instanceID: 0}
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -80,8 +80,10 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [Header("Keywords & Reactions")]
     public List<KeywordReaction> keywordReactions = new List<KeywordReaction>
     {
-        new KeywordReaction { commandId = "LookAt", keyword = "こっちむいて", reactionName = "smile1@unitychan", bodyReactionName = "" },
-        new KeywordReaction { commandId = "Wave", keyword = "手振って", reactionName = "smile2@unitychan", bodyReactionName = "Waving", bodyReactionLayerName = "ArmReactionLayer", bodyReturnStartNormalizedTime = 0.87f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "LookAt", keyword = "こっちむいて", reactionName = "disstract2@unitychan", bodyReactionName = "Pointing", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "LookAt", keyword = "こっちみて", reactionName = "disstract2@unitychan", bodyReactionName = "Pointing", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "UnityChanCall", keyword = "ユニティちゃん", reactionName = "smile1@unitychan", bodyReactionName = "Heart", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "Wave", keyword = "手振って", reactionName = "smile1@unitychan", bodyReactionName = "Waving", bodyReactionLayerName = "ArmReactionLayer", bodyReturnStartNormalizedTime = 0.87f, bodyReturnBlendDuration = 0.7f },
         new KeywordReaction { commandId = "Cute", keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss", bodyReturnStartNormalizedTime = 0.875f, bodyReturnBlendDuration = 0.9f },
         new KeywordReaction { commandId = "Default", keyword = "デフォルト", reactionName = "default@unitychan", bodyReactionName = "" }
     };
@@ -122,6 +124,9 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [Header("Reaction Settings")]
     public float lookAtDuration = 3f;
     public float rigBlendSpeed = 5f;
+
+    [Tooltip("リアクション中のHMD参照、方向、追従強度と頭の方向誤差を0.5秒ごとにConsoleへ表示します。")]
+    [SerializeField] private bool showGazeDiagnostics;
 
     [Tooltip("Legacyは従来の上半身追従、CoordinatedはRoot Motionを保護した安定化上半身追従を使用します。Play開始後の変更は反映されません。")]
     [SerializeField] private VoiceReactionPresentationMode presentationMode =
@@ -175,21 +180,17 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [Range(0f, 10f)]
     [SerializeField] private float stabilizedDirectionDeadZone = 1.5f;
 
-    [Tooltip("安定化した方向上にAimTargetを置く距離です。HMDとの実距離変化をAimへ伝えません。")]
-    [Min(0.1f)]
-    [SerializeField] private float stabilizedTargetDistance = 2f;
-
     [Range(0f, 1f)]
     [SerializeField] private float stabilizedUpperChestWeight = 0.12f;
 
     [Range(0f, 1f)]
-    [SerializeField] private float stabilizedHeadWeight = 0.55f;
+    [SerializeField] private float stabilizedHeadWeight = 1f;
 
     [Range(0f, 90f)]
-    [SerializeField] private float stabilizedUpperChestMaxAngle = 40f;
+    [SerializeField] private float stabilizedUpperChestMaxAngle = 60f;
 
     [Range(0f, 120f)]
-    [SerializeField] private float stabilizedHeadMaxAngle = 50f;
+    [SerializeField] private float stabilizedHeadMaxAngle = 85f;
 
     [Tooltip("プレイヤーを見始めるブレンド時間です。")]
     [Min(0.01f)]
@@ -199,13 +200,13 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [Min(0.01f)]
     [SerializeField] private float stabilizedRigBlendOutDuration = 0.7f;
 
-    [Tooltip("キャラクター正面から目線ターゲットを許可する左右の最大角度です。後方のターゲットによるAimの反転を防ぎます。")]
+    [Tooltip("この左右角度まではHMDを追従し、それ以上は25度かけて追従を弱めます。目標方向自体は変更しません。")]
     [Range(0f, 89f)]
-    [SerializeField] private float stabilizedMaxTargetYaw = 60f;
+    [SerializeField] private float stabilizedMaxTargetYaw = 85f;
 
-    [Tooltip("目線ターゲットを許可する上下の最大角度です。")]
+    [Tooltip("この上下角度まではHMDを追従し、それ以上は25度かけて追従を弱めます。")]
     [Range(0f, 60f)]
-    [SerializeField] private float stabilizedMaxTargetPitch = 25f;
+    [SerializeField] private float stabilizedMaxTargetPitch = 45f;
 
     [Header("Eye Contact")]
     [Tooltip("両目がプレイヤーを見始めるブレンド時間です。")]
@@ -255,7 +256,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [SerializeField] private VoicePointEvaluator voicePointEvaluator = new VoicePointEvaluator();
 
     [Header("Voice Point References (Optional)")]
-    [Tooltip("距離計算に使用するプレイヤー位置です。未設定ならVRカメラを自動取得します。")]
+    [Tooltip("距離計算と目線追従に使用するプレイヤー位置です。未設定ならVRカメラを自動取得します。")]
     [SerializeField] private Transform playerTransformOverride;
 
     [Tooltip("距離計算に使用するUnityちゃん位置です。未設定なら既存のFaceUpdate参照を使用します。")]
@@ -650,6 +651,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     void Update()
     {
         TrySetupUnityChan();
+        UpdateGazeTarget();
         ConfigurePenlightHeartFeature();
         UpdateRecognitionMode();
 
@@ -919,6 +921,63 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     private Coroutine rigBlendCoroutine;
     private Coroutine upperChestBlendCoroutine;
     private int activeBodyLayerIndex = -1;
+    private StabilizedAimTargetFollower stabilizedAimFollower;
+    private AimTargetFollower legacyAimFollower;
+    private Transform gazePlayer;
+    private float blendedRigWeight;
+    private float nextGazeResolveTime;
+    private float nextGazeDiagnosticTime;
+
+    private void UpdateGazeTarget()
+    {
+        if (targetRig == null) return;
+        if (Time.unscaledTime >= nextGazeResolveTime)
+        {
+            nextGazeResolveTime = Time.unscaledTime + 0.5f;
+            Transform resolvedPlayer = ResolvePlayerTransform();
+            if (resolvedPlayer != gazePlayer)
+            {
+                gazePlayer = resolvedPlayer;
+                Debug.Log(gazePlayer != null
+                    ? $"[VoiceGaze] Player target: {gazePlayer.name}, position={gazePlayer.position}"
+                    : "[VoiceGaze] Player target lost; gaze suspended.");
+            }
+        }
+        if (gazePlayer != null && !gazePlayer.gameObject.activeInHierarchy) gazePlayer = null;
+        if (stabilizedAimFollower != null)
+        {
+            stabilizedAimFollower.targetTransform = gazePlayer;
+            stabilizedAimFollower.RefreshTarget(Time.deltaTime);
+        }
+        if (legacyAimFollower != null) legacyAimFollower.targetTransform = gazePlayer;
+        ApplyGazeAvailability();
+    }
+
+    private void ApplyGazeAvailability()
+    {
+        float availability = gazePlayer == null ? 0f
+            : stabilizedAimFollower != null ? stabilizedAimFollower.TrackingWeight : 1f;
+        if (targetRig != null) targetRig.weight = blendedRigWeight * availability;
+        if (eyeContactController != null) eyeContactController.TrackingWeight = availability;
+    }
+
+    private void LateUpdate()
+    {
+        if (!showGazeDiagnostics || blendedRigWeight <= 0f ||
+            Time.unscaledTime < nextGazeDiagnosticTime) return;
+        nextGazeDiagnosticTime = Time.unscaledTime + 0.5f;
+        if (gazePlayer == null || targetAnimator == null || stabilizedAimFollower == null)
+        {
+            Debug.Log("[VoiceGaze] No player or stabilized gaze target.");
+            return;
+        }
+        Transform head = targetAnimator.GetBoneTransform(HumanBodyBones.Head);
+        float error = head != null
+            ? Vector3.Angle(head.up, gazePlayer.position - head.position) : -1f;
+        Debug.Log($"[VoiceGaze] player={gazePlayer.name} yaw={stabilizedAimFollower.PlayerYaw:F1}" +
+            $" pitch={stabilizedAimFollower.PlayerPitch:F1} tracking={stabilizedAimFollower.TrackingWeight:F2}" +
+            $" rig={targetRig.weight:F2} headError={error:F1}deg");
+    }
 
     private void TrySetupUnityChan()
     {
@@ -960,18 +1019,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             return;
         }
 
-        // 3. Create a shared target that follows the player's VR camera.
-        Camera mainCam = null;
-        Unity.XR.CoreUtils.XROrigin xrOrigin =
-            FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
-        if (xrOrigin != null)
-        {
-            mainCam = xrOrigin.Camera;
-        }
-        if (mainCam == null)
-        {
-            mainCam = Camera.main;
-        }
+        // 3. Use the same player reference as voice-point evaluation.
         
         var aimTarget = new GameObject("AimTarget");
         aimTarget.transform.SetParent(rigObj.transform, false);
@@ -979,7 +1027,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         if (lookAtMode == VoiceLookAtMode.Stabilized)
         {
             var follower = aimTarget.AddComponent<StabilizedAimTargetFollower>();
-            follower.targetCamera = mainCam;
+            stabilizedAimFollower = follower;
             follower.originTransform = character.transform;
             Transform head = targetAnimator.GetBoneTransform(HumanBodyBones.Head);
             follower.originLocalOffset = head != null
@@ -987,23 +1035,18 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 : new Vector3(0f, 1.4f, 0f);
             follower.directionSmoothTime = stabilizedDirectionSmoothTime;
             follower.directionDeadZoneDegrees = stabilizedDirectionDeadZone;
-            follower.targetDistance = stabilizedTargetDistance;
             follower.maxYawDegrees = stabilizedMaxTargetYaw;
             follower.maxPitchDegrees = stabilizedMaxTargetPitch;
         }
         else
         {
             var follower = aimTarget.AddComponent<AimTargetFollower>();
-            follower.targetCamera = mainCam;
+            legacyAimFollower = follower;
             follower.smoothTime = aimTargetSmoothTime;
         }
 
-        if (mainCam != null)
-        {
-            aimTarget.transform.position = mainCam.transform.position;
-        }
-
         SetupEyeContact(aimTarget.transform);
+        UpdateGazeTarget();
 
         // 4. Root Motionの進行方向を変えないよう、キャラクタールートは回さない。
         //    安定化した胸上部・首・頭のAimだけでプレイヤーを見る。
@@ -1030,7 +1073,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         }
         else
         {
-            // Legacy: 以前の5ボーン制御を数値も含めてそのまま保持する。
+            // Legacy keeps its five-bone weight distribution, using corrected axes.
             if (enableUpperBodyLookAt)
             {
                 AddUpperBodyAimConstraint(
@@ -1053,7 +1096,10 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 "HeadAimConstraint", headLookWeight, headMaxLookAngle, true);
         }
 
-        rigBuilder.Build();
+        if (!rigBuilder.Build())
+        {
+            Debug.LogError("[VoiceGaze] RigBuilder.Build failed; gaze rig is unavailable.");
+        }
         Debug.Log($"TestSceneVoiceManager: Voice look-at rig setup. Presentation: {presentationMode}, Aim: {lookAtMode}");
     }
 
@@ -1126,23 +1172,14 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         data.limits = new Vector2(-maxAngle, maxAngle);
         data.worldUpType = MultiAimConstraintData.WorldUpType.SceneUp;
 
-        if (isHead)
-        {
-            data.aimAxis = MultiAimConstraintData.Axis.Y;
-            data.upAxis = MultiAimConstraintData.Axis.Z;
-            data.constrainedXAxis = true;
-            data.constrainedYAxis = true;
-            data.constrainedZAxis = false;
-        }
-        else
-        {
-            data.aimAxis = MultiAimConstraintData.Axis.Z;
-            data.upAxis = MultiAimConstraintData.Axis.Y;
-            // The torso only twists horizontally, preserving the song choreography's posture.
-            data.constrainedXAxis = false;
-            data.constrainedYAxis = true;
-            data.constrainedZAxis = false;
-        }
+        // unitychan_hw: chest/neck/head all face local +Y; local -X points up.
+        // MultiAim masks use parent-local axes, not world axes. Allow all axes
+        // so animated parents cannot turn a supposed yaw correction into roll.
+        data.aimAxis = MultiAimConstraintData.Axis.Y;
+        data.upAxis = MultiAimConstraintData.Axis.X_NEG;
+        data.constrainedXAxis = true;
+        data.constrainedYAxis = true;
+        data.constrainedZAxis = true;
 
         aimConstraint.data = data;
         return aimConstraint;
@@ -1578,14 +1615,14 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 
     private Transform ResolvePlayerTransform()
     {
-        if (playerTransformOverride != null)
+        if (playerTransformOverride != null && playerTransformOverride.gameObject.activeInHierarchy)
         {
             return playerTransformOverride;
         }
 
         Unity.XR.CoreUtils.XROrigin xrOrigin =
             FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
-        if (xrOrigin != null && xrOrigin.Camera != null)
+        if (xrOrigin != null && xrOrigin.Camera != null && xrOrigin.Camera.isActiveAndEnabled)
         {
             return xrOrigin.Camera.transform;
         }
@@ -1778,6 +1815,16 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     private IEnumerator ResetFaceReactionRoutine(float delay)
     {
         yield return new WaitForSeconds(delay);
+        // Keep the expression through the body reaction's return blend.
+        // A new voice command cancels this coroutine before starting its face.
+        while (bodyReactionCoroutine != null)
+        {
+            if (lipSyncMouthPriority != null)
+            {
+                lipSyncMouthPriority.PrioritizeFor(0.1f + Time.deltaTime);
+            }
+            yield return null;
+        }
         if (faceUpdate != null)
         {
             faceUpdate.OnCallChangeFace("default@unitychan");
@@ -1878,7 +1925,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             yield break;
         }
 
-        float startWeight = targetRig.weight;
+        float startWeight = blendedRigWeight;
         float duration;
         if (lookAtMode == VoiceLookAtMode.Stabilized)
         {
@@ -1898,16 +1945,18 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         {
             elapsed += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
-            targetRig.weight = Mathf.Lerp(
+            blendedRigWeight = Mathf.Lerp(
                 startWeight,
                 destination,
                 SmootherStep(progress));
+            ApplyGazeAvailability();
             yield return null;
         }
 
         if (targetRig != null)
         {
-            targetRig.weight = destination;
+            blendedRigWeight = destination;
+            ApplyGazeAvailability();
         }
         rigBlendCoroutine = null;
     }
@@ -1923,9 +1972,9 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         switch (reaction.commandId)
         {
             case "LookAt":
-                return 0.72f;
-            case "Wave":
             case "UnityChanCall":
+                return 1f;
+            case "Wave":
                 return 0.48f;
             case "Cute":
                 return 0.65f;
@@ -1947,9 +1996,9 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         switch (reaction.commandId)
         {
             case "LookAt":
-                return 0.22f;
-            case "Wave":
             case "UnityChanCall":
+                return 0.65f;
+            case "Wave":
                 return 0.18f;
             case "Cute":
                 return 0.85f;
@@ -2033,6 +2082,7 @@ public class VoiceEyeContactIK : MonoBehaviour
     private float blendElapsed;
 
     public float CurrentWeight { get; private set; }
+    public float TrackingWeight { get; set; } = 1f;
 
     public void Configure(
         Animator animator,
@@ -2084,7 +2134,7 @@ public class VoiceEyeContactIK : MonoBehaviour
 
         // bodyWeight/headWeightは0にし、両目のみでアイコンタクトを作る。
         targetAnimator.SetLookAtWeight(
-            CurrentWeight,
+            CurrentWeight * Mathf.Clamp01(TrackingWeight),
             0f,
             0f,
             1f,
@@ -2102,6 +2152,7 @@ public class VoiceEyeContactIK : MonoBehaviour
 public class AimTargetFollower : MonoBehaviour
 {
     public Camera targetCamera;
+    public Transform targetTransform;
     [Min(0f)] public float smoothTime = 0.08f;
 
     private Vector3 velocity;
@@ -2109,9 +2160,11 @@ public class AimTargetFollower : MonoBehaviour
 
     void Update()
     {
-        if (targetCamera != null)
+        Transform target = targetTransform != null ? targetTransform
+            : targetCamera != null ? targetCamera.transform : null;
+        if (target != null)
         {
-            Vector3 targetPosition = targetCamera.transform.position;
+            Vector3 targetPosition = target.position;
             if (!initialized || smoothTime <= 0f)
             {
                 transform.position = targetPosition;
@@ -2132,88 +2185,84 @@ public class AimTargetFollower : MonoBehaviour
 
 /// <summary>
 /// 拘束対象ボーン自身ではなくキャラクタールート上の固定基準点からHMD方向を計算し、
-/// 距離変化を捨てた方向へデッドゾーンと角度平滑化を適用します。
+/// HMDへの方向と距離を平滑化し、可動域外では追従強度を下げます。
 /// </summary>
 public class StabilizedAimTargetFollower : MonoBehaviour
 {
     public Camera targetCamera;
+    public Transform targetTransform;
     public Transform originTransform;
     public Vector3 originLocalOffset = new Vector3(0f, 1.4f, 0f);
     [Min(0f)] public float directionSmoothTime = 0.18f;
     [Range(0f, 10f)] public float directionDeadZoneDegrees = 1.5f;
-    [Min(0.1f)] public float targetDistance = 2f;
-    [Range(0f, 89f)] public float maxYawDegrees = 60f;
-    [Range(0f, 60f)] public float maxPitchDegrees = 25f;
+    [Range(0f, 89f)] public float maxYawDegrees = 85f;
+    [Range(0f, 60f)] public float maxPitchDegrees = 45f;
 
+    public float TrackingWeight { get; private set; }
+    public float PlayerYaw { get; private set; }
+    public float PlayerPitch { get; private set; }
     private Vector3 stableDirection;
+    private float stableDistance;
+    private Transform previousTarget;
     private bool initialized;
 
-    void Update()
+    // The manager updates this before applying rig weights. Do not also run it
+    // in Update: smoothing would otherwise depend on script execution order.
+    public void RefreshTarget(float deltaTime)
     {
-        if (targetCamera == null || originTransform == null) return;
+        Transform target = targetTransform != null ? targetTransform
+            : targetCamera != null ? targetCamera.transform : null;
+        if (target == null || originTransform == null)
+        {
+            initialized = false;
+            TrackingWeight = 0f;
+            previousTarget = null;
+            return;
+        }
 
         Vector3 origin = originTransform.TransformPoint(originLocalOffset);
-        Vector3 desiredDirection = targetCamera.transform.position - origin;
-        if (desiredDirection.sqrMagnitude < 0.000001f) return;
-        desiredDirection = ClampDirectionToForwardCone(desiredDirection.normalized);
+        Vector3 delta = target.position - origin;
+        float distance = delta.magnitude;
+        if (distance < 0.01f)
+        {
+            initialized = false;
+            TrackingWeight = 0f;
+            return;
+        }
 
-        if (!initialized)
+        Vector3 desiredDirection = delta / distance;
+        Vector3 local = originTransform.InverseTransformDirection(desiredDirection);
+        PlayerYaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+        PlayerPitch = Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg;
+        // Fade the correction outside the comfortable range; never replace a
+        // rear HMD with a fictitious target in front of the character.
+        float availability = (1f - Mathf.SmoothStep(0f, 1f,
+            Mathf.InverseLerp(maxYawDegrees, maxYawDegrees + 25f, Mathf.Abs(PlayerYaw))))
+            * (1f - Mathf.SmoothStep(0f, 1f,
+            Mathf.InverseLerp(maxPitchDegrees, maxPitchDegrees + 25f, Mathf.Abs(PlayerPitch))));
+        float blend = directionSmoothTime <= 0f ? 1f
+            : 1f - Mathf.Exp(-Mathf.Max(0f, deltaTime) / directionSmoothTime);
+        if (!initialized || previousTarget != target || TrackingWeight < 0.001f)
         {
             stableDirection = desiredDirection;
+            stableDistance = distance;
+            // Start from zero so reacquiring a camera cannot snap the rig on.
+            if (!initialized || previousTarget != target) TrackingWeight = 0f;
             initialized = true;
+            previousTarget = target;
         }
         else
         {
             float angle = Vector3.Angle(stableDirection, desiredDirection);
-            float deadZone = Mathf.Max(0f, directionDeadZoneDegrees);
-            if (angle > deadZone)
+            if (angle > Mathf.Max(0f, directionDeadZoneDegrees))
             {
-                float followFraction = (angle - deadZone) / Mathf.Max(angle, 0.0001f);
-                Vector3 directionOutsideDeadZone = Vector3.Slerp(
-                    stableDirection,
-                    desiredDirection,
-                    followFraction);
-                if (directionSmoothTime <= 0f)
-                {
-                    stableDirection = directionOutsideDeadZone;
-                }
-                else
-                {
-                    float blend = 1f - Mathf.Exp(-Time.deltaTime / directionSmoothTime);
-                    stableDirection = Vector3.Slerp(
-                        stableDirection,
-                        directionOutsideDeadZone,
-                        blend).normalized;
-                }
+                stableDirection = Vector3.Slerp(stableDirection, desiredDirection, blend).normalized;
             }
+            stableDistance = Mathf.Lerp(stableDistance, distance, blend);
         }
-
-        transform.position = origin + stableDirection * Mathf.Max(0.1f, targetDistance);
-    }
-
-    private Vector3 ClampDirectionToForwardCone(Vector3 worldDirection)
-    {
-        Vector3 localDirection =
-            originTransform.InverseTransformDirection(worldDirection).normalized;
-        float horizontalLength = Mathf.Sqrt(
-            localDirection.x * localDirection.x +
-            localDirection.z * localDirection.z);
-        float yaw = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
-        float pitch = Mathf.Atan2(localDirection.y, horizontalLength) * Mathf.Rad2Deg;
-
-        yaw = Mathf.Clamp(yaw, -Mathf.Max(0f, maxYawDegrees), Mathf.Max(0f, maxYawDegrees));
-        pitch = Mathf.Clamp(
-            pitch,
-            -Mathf.Max(0f, maxPitchDegrees),
-            Mathf.Max(0f, maxPitchDegrees));
-
-        float yawRadians = yaw * Mathf.Deg2Rad;
-        float pitchRadians = pitch * Mathf.Deg2Rad;
-        float pitchCosine = Mathf.Cos(pitchRadians);
-        Vector3 clampedLocalDirection = new Vector3(
-            Mathf.Sin(yawRadians) * pitchCosine,
-            Mathf.Sin(pitchRadians),
-            Mathf.Cos(yawRadians) * pitchCosine);
-        return originTransform.TransformDirection(clampedLocalDirection).normalized;
+        TrackingWeight = Mathf.Lerp(TrackingWeight, availability, blend);
+        // Preserve HMD distance as well as direction, avoiding parallax from a
+        // fixed 2m target when the head/chest moves during a reaction.
+        transform.position = origin + stableDirection * stableDistance;
     }
 }

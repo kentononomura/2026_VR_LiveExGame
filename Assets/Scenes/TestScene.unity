@@ -193,6 +193,38 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VRSceneTransitionTrigger
   targetSceneName: VRPhotoResultTest
   fadeDuration: 1
+--- !u!1 &126189387
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 126189388}
+  m_Layer: 0
+  m_Name: Audience Layout
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &126189388
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 126189387}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.35, z: 1.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1191979402}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!1 &151093542
 GameObject:
   m_ObjectHideFlags: 0
@@ -416,7 +448,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StageDirector
   ignoreFastForward: 1
-  unityChanScaleMultiplier: 1.1333333
   musicPlayerPrefab: {fileID: 100000, guid: 2b9a716c1d31d45a5b906738bd5ee33e, type: 3}
   mainCameraRigPrefab: {fileID: 8083774992092227344, guid: 2f4505c1b6788aa43b6b7ba85e23a828, type: 3}
   prefabsNeedsActivation:
@@ -431,6 +462,7 @@ MonoBehaviour:
   - {fileID: 100000, guid: f1efd132732334185ad79bc7263913ec, type: 3}
   - {fileID: 100000, guid: c70aff9297e6d4e9fa6e82c0038ded02, type: 3}
   - {fileID: 100000, guid: 0291ac2d4e1e54df6bfa4776e3683a24, type: 3}
+  unityChanScaleMultiplier: 1.1333333
   cameraPoints:
   - {fileID: 2059686875}
   - {fileID: 1164243624}
@@ -513,6 +545,124 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1080986683}
   m_LocalEulerAnglesHint: {x: -15.6, y: -180, z: 0}
+--- !u!1001 &1191979401
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 126189388}
+    m_Modifications:
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179292, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: m_Name
+      value: ParticleSystem(AudienceB(LOD0)) use MeshEmitter
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: ShapeModule.m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: af6a08f260e25224b9f499b3229d6e65, type: 2}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: ShapeModule.m_Scale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: InitialModule.maxNumParticles
+      value: 36
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: InitialModule.startRotationY.scalar
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: InitialModule.startRotation.minMaxState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: InitialModule.startRotationX.minMaxState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: InitialModule.startRotationY.minMaxState
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: EmissionModule.m_Bursts.Array.data[0].repeatInterval
+      value: 0.0001
+      objectReference: {fileID: 0}
+    - target: {fileID: 4766853876236179294, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      propertyPath: EmissionModule.m_Bursts.Array.data[0].countCurve.scalar
+      value: 36
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4766853876236179292, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1191979404}
+  m_SourcePrefab: {fileID: 100100000, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+--- !u!4 &1191979402 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4766853876236179289, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+  m_PrefabInstance: {fileID: 1191979401}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1191979403 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4766853876236179292, guid: 62bbe3846657d6d49b3d2a47689906af, type: 3}
+  m_PrefabInstance: {fileID: 1191979401}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1191979404
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1191979403}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c02f893b6b834a94a9c318a1a735adb8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudienceCircleFacing
 --- !u!1 &1855825218
 GameObject:
   m_ObjectHideFlags: 0
@@ -614,11 +764,11 @@ MonoBehaviour:
   keywordReactions:
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -629,11 +779,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3061\u3080\u3044\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -644,11 +794,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -659,11 +809,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3080\u3044\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -674,11 +824,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u898B\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -689,11 +839,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u307F\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -704,11 +854,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u898B\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -719,11 +869,11 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u307F\u3066"
-    reactionName: smile1@unitychan
-    bodyReactionName: 
-    bodyReactionLayerName: 
-    bodyReturnStartNormalizedTime: -1
-    bodyReturnBlendDuration: -1
+    reactionName: disstract2@unitychan
+    bodyReactionName: Pointing
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
+    bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
     overrideEyeContactStrength: 0
@@ -734,7 +884,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u624B\u632F\u3063\u3066"
-    reactionName: smile2@unitychan
+    reactionName: smile1@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
@@ -749,7 +899,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u624B\u3092\u632F\u3063\u3066"
-    reactionName: smile2@unitychan
+    reactionName: smile1@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
@@ -764,7 +914,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u3066\u632F\u3063\u3066"
-    reactionName: smile2@unitychan
+    reactionName: smile1@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
@@ -779,7 +929,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u632F\u3063\u3066"
-    reactionName: smile2@unitychan
+    reactionName: smile1@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
@@ -794,7 +944,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: Wave
     keyword: "\u3075\u3063\u3066"
-    reactionName: smile2@unitychan
+    reactionName: smile1@unitychan
     bodyReactionName: Waving
     bodyReactionLayerName: ArmReactionLayer
     bodyReturnStartNormalizedTime: 0.87
@@ -899,10 +1049,10 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
-    reactionName: default@unitychan
-    bodyReactionName: Waving
-    bodyReactionLayerName: ArmReactionLayer
-    bodyReturnStartNormalizedTime: 0.87
+    reactionName: smile1@unitychan
+    bodyReactionName: Heart
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
     bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
@@ -914,10 +1064,10 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u30C6\u30A3\u30FC\u3061\u3083\u3093"
-    reactionName: default@unitychan
-    bodyReactionName: Waving
-    bodyReactionLayerName: ArmReactionLayer
-    bodyReturnStartNormalizedTime: 0.87
+    reactionName: smile1@unitychan
+    bodyReactionName: Heart
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
     bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
@@ -929,10 +1079,10 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: UnityChanCall
     keyword: "\u30E6\u30CB\u3061\u3083\u3093"
-    reactionName: default@unitychan
-    bodyReactionName: Waving
-    bodyReactionLayerName: ArmReactionLayer
-    bodyReturnStartNormalizedTime: 0.87
+    reactionName: smile1@unitychan
+    bodyReactionName: Heart
+    bodyReactionLayerName: ReactionLayer
+    bodyReturnStartNormalizedTime: 0.9
     bodyReturnBlendDuration: 0.7
     overrideLookAtStrength: 0
     lookAtStrength: 0.4
@@ -952,6 +1102,7 @@ MonoBehaviour:
   postRollDuration: 0.25
   lookAtDuration: 3
   rigBlendSpeed: 5
+  showGazeDiagnostics: 0
   presentationMode: 1
   bodyReactionBlendInDuration: 0.3
   bodyReactionDuration: 2.5
@@ -964,15 +1115,14 @@ MonoBehaviour:
   lookAtMode: 1
   stabilizedDirectionSmoothTime: 0.18
   stabilizedDirectionDeadZone: 1.5
-  stabilizedTargetDistance: 2
   stabilizedUpperChestWeight: 0.12
-  stabilizedHeadWeight: 0.55
-  stabilizedUpperChestMaxAngle: 40
-  stabilizedHeadMaxAngle: 50
+  stabilizedHeadWeight: 1
+  stabilizedUpperChestMaxAngle: 60
+  stabilizedHeadMaxAngle: 85
   stabilizedRigBlendInDuration: 0.4
   stabilizedRigBlendOutDuration: 0.7
-  stabilizedMaxTargetYaw: 60
-  stabilizedMaxTargetPitch: 25
+  stabilizedMaxTargetYaw: 85
+  stabilizedMaxTargetPitch: 45
   eyeContactBlendInDuration: 0.35
   eyeContactBlendOutDuration: 0.65
   eyeContactClampWeight: 0.65
@@ -1218,3 +1368,4 @@ SceneRoots:
   - {fileID: 97136306}
   - {fileID: 151093544}
   - {fileID: 1878753596}
+  - {fileID: 126189388}
