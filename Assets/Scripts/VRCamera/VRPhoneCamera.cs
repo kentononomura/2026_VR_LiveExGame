@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[DefaultExecutionOrder(10001)]
 public class VRPhoneCamera : MonoBehaviour
 {
     [Header("Camera & RenderTexture Settings")]
@@ -204,6 +205,11 @@ public class VRPhoneCamera : MonoBehaviour
     private void Update()
     {
         HandleZoom();
+    }
+
+    private void LateUpdate()
+    {
+        // Read the stabilized phone pose after VRPhoneStabilizer has updated it.
         UpdateOrientationUI(false);
     }
 

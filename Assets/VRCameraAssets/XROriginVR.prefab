@@ -1284,6 +1284,7 @@ GameObject:
   - component: {fileID: 2262994906619867888}
   - component: {fileID: 1897946553223694372}
   - component: {fileID: 4249944991151373358}
+  - component: {fileID: 8174985362001130991}
   m_Layer: 0
   m_Name: VRPhoneCamera
   m_TagString: Untagged
@@ -1291,6 +1292,25 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8174985362001130991
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6291393763203585000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 079bae4ef2d84f5195b749a2f8da39ef, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::VRPhoneStabilizer
+  stabilizationEnabled: 1
+  positionMinCutoff: 4
+  positionSpeedCoefficient: 4
+  rotationMinCutoff: 2
+  rotationSpeedCoefficient: 0.025
+  resetDistance: 0.5
+  resetAngle: 90
 --- !u!4 &2262994906619867888
 Transform:
   m_ObjectHideFlags: 0

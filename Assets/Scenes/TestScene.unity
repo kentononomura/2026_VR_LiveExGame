@@ -663,6 +663,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c02f893b6b834a94a9c318a1a735adb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudienceCircleFacing
+  heightMeters: 1.7
+  animationSpeedMultiplier: 1.25
+  motionInterval: 8
+  motionTransition: 1
 --- !u!1 &1855825218
 GameObject:
   m_ObjectHideFlags: 0
@@ -707,6 +711,7 @@ GameObject:
   - component: {fileID: 1878753597}
   - component: {fileID: 1878753598}
   - component: {fileID: 1878753599}
+  - component: {fileID: 1878753600}
   m_Layer: 0
   m_Name: TestSceneVoiceManager
   m_TagString: Untagged
@@ -764,7 +769,7 @@ MonoBehaviour:
   keywordReactions:
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u3080\u3044\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -779,7 +784,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3061\u3080\u3044\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -794,7 +799,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -809,7 +814,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3080\u3044\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -824,7 +829,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u898B\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -839,7 +844,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u3053\u3063\u3061\u307F\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -854,7 +859,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u898B\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -869,7 +874,7 @@ MonoBehaviour:
     lookAtHoldDuration: 3
   - commandId: LookAt
     keyword: "\u307F\u3066"
-    reactionName: disstract2@unitychan
+    reactionName: smile3@unitychan
     bodyReactionName: Pointing
     bodyReactionLayerName: ReactionLayer
     bodyReturnStartNormalizedTime: 0.9
@@ -1328,6 +1333,24 @@ MonoBehaviour:
   heartBonusMultiplier: 1.5
   heartBonusDuration: 3
   enableDebugLog: 0
+--- !u!114 &1878753600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878753594}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c67d06317084ff4ab9c5e263fcb561a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PenlightSwingHaptics
+  leftPenlight: {fileID: 0}
+  amplitude: 0.04
+  pulseDuration: 0.06
+  pulseInterval: 0.05
+  minimumSpeed: 0.35
+  minimumAngularSpeed: 45
 --- !u!1 &2059686874
 GameObject:
   m_ObjectHideFlags: 0

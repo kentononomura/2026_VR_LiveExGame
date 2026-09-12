@@ -275,7 +275,7 @@ public sealed class PenlightHeartFeature : MonoBehaviour
                 "Penlight Swing Sparkles",
                 resolvedTipAnchor,
                 true,
-                14f,
+                21f,
                 32);
         }
 
@@ -304,18 +304,55 @@ public sealed class PenlightHeartFeature : MonoBehaviour
         }
         if (resolvedTipAnchor != null || leftPenlight == null) return;
 
+        // Saber.Start がモデルを生成するまで待つ。先に固定位置を確定しない。
+        Transform visual = leftPenlight.transform.Find("SaberVisual");
+        if (visual == null) return;
+
+        Transform anchorParent = visual;
+        Vector3 anchorPosition = Vector3.zero;
+        Renderer[] renderers = visual.GetComponentsInChildren<Renderer>(true);
+        bool foundLight = false;
+        foreach (Renderer renderer in renderers)
+        {
+            Material[] materials = renderer.sharedMaterials;
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] == null ||
+                    materials[i].name.IndexOf("light", System.StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                // 発光部と持ち手が同じMeshでも、Lightマテリアルの範囲だけを使う。
+                Bounds lightBounds = renderer.localBounds;
+                MeshFilter filter = renderer.GetComponent<MeshFilter>();
+                Mesh mesh = filter != null ? filter.sharedMesh :
+                    (renderer as SkinnedMeshRenderer)?.sharedMesh;
+                if (mesh != null && i < mesh.subMeshCount)
+                {
+                    Bounds subMeshBounds = mesh.GetSubMesh(i).bounds;
+                    if (subMeshBounds.size.sqrMagnitude > 0f)
+                        lightBounds = subMeshBounds;
+                }
+
+                anchorParent = renderer.transform;
+                anchorPosition = lightBounds.center;
+                foundLight = true;
+                break;
+            }
+            if (foundLight) break;
+        }
+
+        // 標準Cylinderや発光マテリアルがないモデルも、実際の表示位置から出す。
+        if (!foundLight && renderers.Length > 0)
+        {
+            anchorParent = renderers[0].transform;
+            anchorPosition = renderers[0].localBounds.center;
+        }
+
         GameObject tipObject = new GameObject("Penlight Effect Tip");
         resolvedTipAnchor = tipObject.transform;
         ownsTipAnchor = true;
-        resolvedTipAnchor.SetParent(leftPenlight.transform, false);
-
-        Saber saber = leftPenlight.saber != null
-            ? leftPenlight.saber
-            : leftPenlight.GetComponent<Saber>();
-        float tipDistance = saber != null
-            ? (saber.visualPrefab != null ? 0.32f : Mathf.Max(0.05f, saber.length))
-            : 0.32f;
-        resolvedTipAnchor.localPosition = Vector3.forward * tipDistance;
+        resolvedTipAnchor.SetParent(anchorParent, false);
+        resolvedTipAnchor.localPosition = anchorPosition;
         resolvedTipAnchor.localRotation = Quaternion.identity;
     }
 
@@ -540,6 +577,8 @@ public sealed class PenlightHeartFeature : MonoBehaviour
         main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.07f);
         main.maxParticles = maxParticles;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
+        // 発光Meshの子に置いても、モデルの拡縮で粒子の大きさを変えない。
+        main.scalingMode = ParticleSystemScalingMode.Local;
 
         ParticleSystem.EmissionModule emission = particles.emission;
         emission.rateOverTime = rate;

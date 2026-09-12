@@ -80,8 +80,8 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     [Header("Keywords & Reactions")]
     public List<KeywordReaction> keywordReactions = new List<KeywordReaction>
     {
-        new KeywordReaction { commandId = "LookAt", keyword = "こっちむいて", reactionName = "disstract2@unitychan", bodyReactionName = "Pointing", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
-        new KeywordReaction { commandId = "LookAt", keyword = "こっちみて", reactionName = "disstract2@unitychan", bodyReactionName = "Pointing", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "LookAt", keyword = "こっちむいて", reactionName = "smile3@unitychan", bodyReactionName = "Pointing", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
+        new KeywordReaction { commandId = "LookAt", keyword = "こっちみて", reactionName = "smile3@unitychan", bodyReactionName = "Pointing", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
         new KeywordReaction { commandId = "UnityChanCall", keyword = "ユニティちゃん", reactionName = "smile1@unitychan", bodyReactionName = "Heart", bodyReactionLayerName = "ReactionLayer", bodyReturnStartNormalizedTime = 0.9f, bodyReturnBlendDuration = 0.7f },
         new KeywordReaction { commandId = "Wave", keyword = "手振って", reactionName = "smile1@unitychan", bodyReactionName = "Waving", bodyReactionLayerName = "ArmReactionLayer", bodyReturnStartNormalizedTime = 0.87f, bodyReturnBlendDuration = 0.7f },
         new KeywordReaction { commandId = "Cute", keyword = "かわいい", reactionName = "smile3@unitychan", bodyReactionName = "Kiss", bodyReturnStartNormalizedTime = 0.875f, bodyReturnBlendDuration = 0.9f },

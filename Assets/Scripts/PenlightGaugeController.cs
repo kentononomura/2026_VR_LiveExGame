@@ -128,6 +128,10 @@ public class PenlightGaugeController : MonoBehaviour
     private float peakStrokeProgress;
     private float awardedStrokeProgress;
     private float stationaryTime;
+    private float levelHapticsUntil;
+
+    // 弱いスイング振動がレベルアップの振動を上書きしないための共有状態。
+    public bool IsLevelHapticActive => Time.unscaledTime < levelHapticsUntil;
 
     /// <summary>
     /// ノイズを除外した有効な振りによってゲージが増えたときに、今回の加算量を通知します。
@@ -427,7 +431,8 @@ public class PenlightGaugeController : MonoBehaviour
             HapticCapabilities capabilities;
             if (device.TryGetHapticCapabilities(out capabilities) && capabilities.supportsImpulse)
             {
-                device.SendHapticImpulse(0, hapticAmplitude, hapticDuration);
+                if (device.SendHapticImpulse(0, hapticAmplitude, hapticDuration))
+                    levelHapticsUntil = Time.unscaledTime + hapticDuration;
             }
         }
     }
