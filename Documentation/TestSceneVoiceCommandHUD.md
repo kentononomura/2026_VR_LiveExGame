@@ -1,5 +1,9 @@
 # TestScene ボイスコマンド HUD 仕様
 
+> 2026-09-13更新: TestSceneの標準表示はステージ固定の電光掲示板に変更しました。
+> 現行の配置・調整・確認手順は [TestSceneVoiceBillboard.md](TestSceneVoiceBillboard.md) を参照してください。
+> 以下の頭部追従、常時ポイント表示、寸法に関する記述は旧HUDの仕様です。
+
 ## 1. 目的
 
 TestScene で使用できるボイスコマンドを、プレイヤーの視界右側へ常時表示する。

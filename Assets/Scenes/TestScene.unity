@@ -1277,7 +1277,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45b3e9e56c2d4c14ab247f943c7caee2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VoiceCommandHUD
-  heading: "\u30DC\u30A4\u30B9\u30B3\u30DE\u30F3\u30C9"
+  heading: "声を届けよう！"
   commands:
   - commandId: LookAt
     displayText: "\u3053\u3063\u3061\u5411\u3044\u3066"
@@ -1288,13 +1288,18 @@ MonoBehaviour:
   - commandId: UnityChanCall
     displayText: "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
   japaneseFont: {fileID: 11400000, guid: 9f217eb13199f324fb763b886144d607, type: 2}
+  useStageBillboard: 1
+  billboardAnchor: {fileID: 2099000001}
+  housingMaterial: {fileID: 2100000, guid: a6f27e4d91bf4e3396fc642c32842b8a, type: 2}
+  showVoicePointDebug: 0
+  supportHeight: 0.85
   distanceFromCamera: 2
   horizontalOffset: 0.75
   verticalOffset: -0.05
   positionFollowSpeed: 5
   rotationFollowSpeed: 5
-  worldScale: 0.0014
-  panelColor: {r: 0.025, g: 0.035, b: 0.055, a: 0.78}
+  worldScale: 0.0035
+  panelColor: {r: 0.008, g: 0.014, b: 0.024, a: 1}
   normalBackgroundColor: {r: 1, g: 1, b: 1, a: 0.1}
   normalTextColor: {r: 1, g: 1, b: 1, a: 1}
   highlightBackgroundColor: {r: 1, g: 0.22, b: 0.52, a: 0.94}
@@ -1382,6 +1387,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1080986683}
   m_LocalEulerAnglesHint: {x: 0, y: -180, z: 0}
+--- !u!1 &2099000000
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2099000001}
+  m_Layer: 0
+  m_Name: Stage Voice Billboard
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2099000001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2099000000}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: -2.4, y: 1.7, z: 0.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1392,3 +1428,4 @@ SceneRoots:
   - {fileID: 151093544}
   - {fileID: 1878753596}
   - {fileID: 126189388}
+  - {fileID: 2099000001}

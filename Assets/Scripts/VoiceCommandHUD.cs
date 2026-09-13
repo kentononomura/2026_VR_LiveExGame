@@ -13,7 +13,7 @@ public sealed class VoiceCommandHUDEntry
 }
 
 /// <summary>
-/// TestSceneで使用できるボイスコマンドを、視界右側へ常時表示します。
+/// ステージ固定の応援掲示板、または従来の頭部追従HUDを表示します。
 /// UI階層は起動時に一度だけ生成し、リアクション成立時だけ該当項目を強調します。
 /// </summary>
 [DisallowMultipleComponent]
@@ -29,6 +29,14 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         new VoiceCommandHUDEntry { commandId = "UnityChanCall", displayText = "ユニティちゃん" }
     };
     [SerializeField] private TMP_FontAsset japaneseFont;
+
+    [Header("Stage Billboard")]
+    [SerializeField] private bool useStageBillboard;
+    [Tooltip("掲示板表面の中心。Canvasの正面はローカル-Z方向です。")]
+    [SerializeField] private Transform billboardAnchor;
+    [SerializeField] private Material housingMaterial;
+    [SerializeField] private bool showVoicePointDebug;
+    [Min(0f)] [SerializeField] private float supportHeight = 0.6f;
 
     [Header("Placement")]
     [Min(0.1f)]
@@ -74,6 +82,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     private TMP_Text voicePointText;
     private Coroutine highlightCoroutine;
     private bool hasInitialPlacement;
+    private GameObject billboardHousing;
 
     private void Awake()
     {
@@ -84,11 +93,14 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     private void OnEnable()
     {
         hasInitialPlacement = false;
+        if (canvasRect != null) canvasRect.gameObject.SetActive(true);
+        if (billboardHousing != null) billboardHousing.SetActive(true);
         ResetAllItemsImmediate();
     }
 
     private void LateUpdate()
     {
+        if (useStageBillboard) return;
         Camera mainCamera = Camera.main;
         if (mainCamera == null || canvasRect == null) return;
 
@@ -114,6 +126,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
 
     public void HighlightCommand(string commandId)
     {
+        if (!isActiveAndEnabled) return;
         if (string.IsNullOrWhiteSpace(commandId) ||
             !items.TryGetValue(commandId, out ItemVisual target))
         {
@@ -131,7 +144,9 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     /// <summary>直近の声かけ判定を、次の判定まで表示します。表示のための再計算は行いません。</summary>
     public void ShowVoicePoint(VoicePointEvaluator.EvaluationResult? result)
     {
+        if (!showVoicePointDebug) return;
         if (voicePointText == null) BuildHUD();
+        if (voicePointText == null) return;
         if (!result.HasValue)
         {
             voicePointText.text = "音声ポイント: 計算できません";
@@ -155,17 +170,20 @@ public sealed class VoiceCommandHUD : MonoBehaviour
             typeof(RectTransform),
             typeof(Canvas));
         canvasObject.layer = gameObject.layer;
-        canvasObject.transform.SetParent(transform, false);
+        Transform displayParent = useStageBillboard && billboardAnchor != null ? billboardAnchor : transform;
+        canvasObject.transform.SetParent(displayParent, false);
 
         Canvas canvas = canvasObject.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
-        canvas.overrideSorting = true;
-        canvas.sortingOrder = 50;
+        canvas.overrideSorting = !useStageBillboard;
+        canvas.sortingOrder = useStageBillboard ? 0 : 50;
 
         canvasRect = canvasObject.GetComponent<RectTransform>();
         float commandAreaHeight = Mathf.Max(430f, 134f + (commands?.Count ?? 0) * 74f);
-        canvasRect.sizeDelta = new Vector2(560f, commandAreaHeight + 150f);
+        canvasRect.sizeDelta = new Vector2(560f, commandAreaHeight + (showVoicePointDebug ? 150f : 0f));
         canvasRect.localScale = Vector3.one * worldScale;
+
+        if (useStageBillboard) BuildHousing(displayParent, canvasRect.sizeDelta * worldScale);
 
         Image panel = CreateImage("Panel", canvasRect, panelColor);
         StretchToParent(panel.rectTransform);
@@ -192,18 +210,21 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         headingText.alignment = TextAlignmentOptions.Center;
         headingText.fontStyle = FontStyles.Bold;
 
-        voicePointText = CreateText("Voice Point Debug", canvasRect,
-            "直近の音声ポイント: --\n声かけを認識すると表示します", 26f);
-        RectTransform pointRect = voicePointText.rectTransform;
-        pointRect.anchorMin = new Vector2(0.5f, 1f);
-        pointRect.anchorMax = new Vector2(0.5f, 1f);
-        pointRect.pivot = new Vector2(0.5f, 1f);
-        pointRect.anchoredPosition = new Vector2(0f, -commandAreaHeight);
-        pointRect.sizeDelta = new Vector2(500f, 132f);
-        voicePointText.alignment = TextAlignmentOptions.TopLeft;
-        voicePointText.enableAutoSizing = true;
-        voicePointText.fontSizeMin = 20f;
-        voicePointText.fontSizeMax = 26f;
+        if (showVoicePointDebug)
+        {
+            voicePointText = CreateText("Voice Point Debug", canvasRect,
+                "直近の音声ポイント: --\n声かけを認識すると表示します", 26f);
+            RectTransform pointRect = voicePointText.rectTransform;
+            pointRect.anchorMin = new Vector2(0.5f, 1f);
+            pointRect.anchorMax = new Vector2(0.5f, 1f);
+            pointRect.pivot = new Vector2(0.5f, 1f);
+            pointRect.anchoredPosition = new Vector2(0f, -commandAreaHeight);
+            pointRect.sizeDelta = new Vector2(500f, 132f);
+            voicePointText.alignment = TextAlignmentOptions.TopLeft;
+            voicePointText.enableAutoSizing = true;
+            voicePointText.fontSizeMin = 20f;
+            voicePointText.fontSizeMax = 26f;
+        }
 
         items.Clear();
         itemList.Clear();
@@ -248,6 +269,59 @@ public sealed class VoiceCommandHUD : MonoBehaviour
             items.Add(entry.commandId, visual);
             itemList.Add(visual);
         }
+    }
+
+    private void BuildHousing(Transform parent, Vector2 screenSize)
+    {
+        billboardHousing = new GameObject("Billboard Housing");
+        billboardHousing.layer = gameObject.layer;
+        billboardHousing.transform.SetParent(parent, false);
+        // Canvas faces -Z. Keep the front of the opaque housing behind the screen.
+        CreateHousingPart("Cabinet", new Vector3(0f, 0f, 0.09f),
+            new Vector3(screenSize.x + 0.12f, screenSize.y + 0.12f, 0.16f));
+        if (supportHeight <= 0f) return;
+        float bottom = -screenSize.y * 0.5f - 0.06f;
+        foreach (float side in new[] { -1f, 1f })
+        {
+            CreateHousingPart("Support", new Vector3(side * screenSize.x * 0.32f,
+                bottom - supportHeight * 0.5f, 0.09f), new Vector3(0.07f, supportHeight, 0.1f));
+        }
+        CreateHousingPart("Base", new Vector3(0f, bottom - supportHeight, 0.09f),
+            new Vector3(screenSize.x + 0.2f, 0.08f, 0.5f));
+    }
+
+    private void CreateHousingPart(string partName, Vector3 position, Vector3 scale)
+    {
+        GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        part.name = partName;
+        part.layer = gameObject.layer;
+        part.transform.SetParent(billboardHousing.transform, false);
+        part.transform.localPosition = position;
+        part.transform.localScale = scale;
+        Collider partCollider = part.GetComponent<Collider>();
+        partCollider.enabled = false;
+        Destroy(partCollider);
+        if (housingMaterial != null) part.GetComponent<MeshRenderer>().sharedMaterial = housingMaterial;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (!useStageBillboard) return;
+        Transform anchor = billboardAnchor != null ? billboardAnchor : transform;
+        Matrix4x4 previous = Gizmos.matrix;
+        Gizmos.matrix = anchor.localToWorldMatrix;
+        Gizmos.color = Color.cyan;
+        float height = Mathf.Max(430f, 134f + (commands?.Count ?? 0) * 74f)
+            + (showVoicePointDebug ? 150f : 0f);
+        Gizmos.DrawWireCube(Vector3.zero, new Vector3(560f * worldScale, height * worldScale, 0.02f));
+        Gizmos.DrawLine(Vector3.zero, Vector3.back * 0.5f);
+        Gizmos.matrix = previous;
+    }
+
+    private void OnDestroy()
+    {
+        if (canvasRect != null) Destroy(canvasRect.gameObject);
+        if (billboardHousing != null) Destroy(billboardHousing);
     }
 
     private Image CreateImage(string objectName, Transform parent, Color color)
@@ -423,5 +497,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
             highlightCoroutine = null;
         }
         ResetAllItemsImmediate();
+        if (canvasRect != null) canvasRect.gameObject.SetActive(false);
+        if (billboardHousing != null) billboardHousing.SetActive(false);
     }
 }
