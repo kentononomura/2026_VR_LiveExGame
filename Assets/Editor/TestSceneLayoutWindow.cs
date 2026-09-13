@@ -12,6 +12,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
     private const string AudienceName = "Audience Layout";
     private const string AudiencePrefabPath = "Assets/ShirayuriMeshibe/Scenes/ParticleAudience/URP/Models/AudienceB/Prefabs/ParticleSystem(AudienceB(LOD0)) use MeshEmitter.prefab";
     private static GameObject previewRoot;
+    private static readonly List<GameObject> billboardPreviews = new List<GameObject>();
     [SerializeField] private Vector3 circleCenter = new Vector3(0f, 0f, 2f);
     [SerializeField] private float circleRadius = 6f;
     [SerializeField] private int circleRows = 3;
@@ -43,11 +44,13 @@ public sealed class TestSceneLayoutWindow : EditorWindow
     {
         scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
         EditorGUILayout.HelpBox(
-            "TestSceneを開き、ステージプレビューを表示してください。再生時に生成されるステージとUnityちゃんの初期位置を表示します。", MessageType.Info);
+            "TestSceneを開き、ステージプレビューを表示してください。ステージ・Unityちゃんの初期位置と応援掲示板を表示します。", MessageType.Info);
         using (new EditorGUI.DisabledScope(EditorApplication.isPlayingOrWillChangePlaymode))
         {
             if (GUILayout.Button("1. ステージプレビューを表示・更新")) ShowPreview();
             if (GUILayout.Button("2. 観客を追加／選択")) AddAudience();
+            if (GUILayout.Button("3. 掲示板を表示／選択")) SelectBillboard();
+            if (GUILayout.Button("配置をシーンに保存")) SaveLayout();
             if (GUILayout.Button("プレビューを消す")) ClearPreview();
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("ステージ正面の扇形配置", EditorStyles.boldLabel);
@@ -81,6 +84,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
         EditorGUILayout.HelpBox(
             "Audience Layoutを選択し、SceneビューでW（移動）・E（回転）を使って調整し、Ctrl+Sで保存します。観客はシーンに保存され、再生時もその位置を使用します。\n\n" +
             "位置を変えた後はParticle SystemのプレビューをRestartしてください。人数・配置メッシュ・マテリアルは子のParticle Systemで調整します。\n\n" +
+            "掲示板は「3. 掲示板を表示／選択」で選び、W（移動）・E（回転）で調整します。見た目も一緒に移動します。「配置をシーンに保存」またはCtrl+Sで位置・回転を保存します。文字サイズなどを変えたらプレビューを更新してください。\n\n" +
             "ステージプレビューは表示専用です。保存・ビルドには含まれず、Play開始時に自動で消えます。ダンス移動後の位置を表すものではありません。", MessageType.None);
         EditorGUILayout.EndScrollView();
     }
@@ -124,7 +128,61 @@ public sealed class TestSceneLayoutWindow : EditorWindow
                 AddVisuals(new[] { prefab }, scale);
             }
         }
+        AddBillboardPreviews(director.gameObject.scene);
         SceneView.RepaintAll();
+    }
+
+    private static VoiceCommandHUD FindBillboard(Scene scene)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+            foreach (VoiceCommandHUD hud in root.GetComponentsInChildren<VoiceCommandHUD>(true))
+            {
+                var settings = new SerializedObject(hud);
+                if (settings.FindProperty("useStageBillboard").boolValue) return hud;
+            }
+        return null;
+    }
+
+    private static void AddBillboardPreviews(Scene scene)
+    {
+        VoiceCommandHUD hud = FindBillboard(scene);
+        if (hud == null) return;
+        GameObject visual = hud.CreateLayoutPreview();
+        if (visual == null) return;
+        billboardPreviews.Add(visual);
+        foreach (Transform child in visual.GetComponentsInChildren<Transform>(true))
+        {
+            child.gameObject.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild | HideFlags.NotEditable;
+            foreach (Component component in child.GetComponents<Component>())
+                component.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild | HideFlags.NotEditable;
+        }
+    }
+
+    public static void SelectBillboard()
+    {
+        StageDirector director = FindDirector();
+        if (director == null) return;
+        VoiceCommandHUD hud = FindBillboard(director.gameObject.scene);
+        if (hud == null)
+        {
+            Debug.LogWarning("固定掲示板が見つかりません。VoiceCommandHUDのUse Stage Billboardを確認してください。");
+            return;
+        }
+        ShowPreview();
+        var settings = new SerializedObject(hud);
+        Transform anchor = settings.FindProperty("billboardAnchor").objectReferenceValue as Transform;
+        Selection.activeGameObject = (anchor != null ? anchor : hud.transform).gameObject;
+        Tools.current = Tool.Move;
+        SceneView.RepaintAll();
+    }
+
+    public static void SaveLayout()
+    {
+        StageDirector director = FindDirector();
+        if (director == null) return;
+        // Only the persistent anchor is saved; preview geometry carries DontSave flags.
+        if (EditorSceneManager.SaveScene(director.gameObject.scene))
+            Debug.Log("TestSceneの配置を保存しました。掲示板の位置・回転は再生時にも使用されます。");
     }
 
     private static void AddVisuals(GameObject[] prefabs, float scale)
@@ -183,6 +241,9 @@ public sealed class TestSceneLayoutWindow : EditorWindow
 
     public static void ClearPreview()
     {
+        foreach (GameObject visual in billboardPreviews)
+            if (visual != null) DestroyImmediate(visual);
+        billboardPreviews.Clear();
         if (previewRoot != null) DestroyImmediate(previewRoot);
         previewRoot = null;
         SceneView.RepaintAll();

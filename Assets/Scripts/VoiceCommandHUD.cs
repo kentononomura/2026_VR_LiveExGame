@@ -84,6 +84,41 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     private bool hasInitialPlacement;
     private GameObject billboardHousing;
 
+#if UNITY_EDITOR
+    // Build the same visuals in edit mode without changing this scene component.
+    public GameObject CreateLayoutPreview()
+    {
+        if (Application.isPlaying || !useStageBillboard) return null;
+        var root = new GameObject("Voice Billboard Preview (not saved)");
+        root.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+        root.tag = "EditorOnly";
+        root.transform.SetParent(billboardAnchor != null ? billboardAnchor : transform, false);
+        var builder = root.AddComponent<VoiceCommandHUD>();
+        UnityEditor.EditorUtility.CopySerialized(this, builder);
+        builder.billboardAnchor = root.transform;
+        try
+        {
+            builder.BuildHUD();
+            builder.ResetAllItemsImmediate();
+            // The returned preview owns these children; no controller is needed.
+            builder.canvasRect = null;
+            builder.billboardHousing = null;
+            builder.itemList.Clear();
+            builder.items.Clear();
+            DestroyImmediate(builder);
+            return root;
+        }
+        catch
+        {
+            builder.canvasRect = null;
+            builder.billboardHousing = null;
+            builder.itemList.Clear();
+            DestroyImmediate(root);
+            throw;
+        }
+    }
+#endif
+
     private void Awake()
     {
         BuildHUD();
@@ -300,7 +335,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         part.transform.localScale = scale;
         Collider partCollider = part.GetComponent<Collider>();
         partCollider.enabled = false;
-        Destroy(partCollider);
+        if (Application.isPlaying) Destroy(partCollider);
+        else DestroyImmediate(partCollider);
         if (housingMaterial != null) part.GetComponent<MeshRenderer>().sharedMaterial = housingMaterial;
     }
 
