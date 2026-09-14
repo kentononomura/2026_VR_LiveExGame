@@ -122,7 +122,7 @@ namespace PVCapture.Editor
             }
             else if (step == 3 && control.MusicSeconds > 5)
             {
-                Require(UnityEngine.Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Count(a => a.enabled) == 1, "Expected exactly one audio listener");
+                Require(UnityEngine.Object.FindObjectsByType<AudioListener>().Count(a => a.enabled) == 1, "Expected exactly one audio listener");
                 Require(UnityEngine.Object.FindAnyObjectByType<StageDirector>() == null, "Gameplay director must be absent");
                 Require(UnityEngine.Object.FindAnyObjectByType<VRPauseMenu>() == null, "VR menu must be absent");
                 Require(UnityEngine.Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>() == null, "XR rig must be absent");
@@ -134,6 +134,9 @@ namespace PVCapture.Editor
                 boneRotations = bones.Select(b => b.localRotation).ToArray();
                 particles = control.LiveRoot.GetComponentsInChildren<ParticleSystem>();
                 particleTimes = particles.Select(p => p.time).ToArray();
+                // Reproduce Recorder restoring the pre-recording timeScale after PV Pause.
+                // Particle simulation must remain frozen independently of the global clock.
+                Time.timeScale = 1;
                 cameraPosition = camera.transform.position;
                 camera.transform.position += Vector3.right * 0.1f;
                 step = 4; deadline = now + 20;
@@ -148,7 +151,7 @@ namespace PVCapture.Editor
                     if (particles[i] != null) Require(Mathf.Abs(particles[i].time - particleTimes[i]) < 0.001f, "Particle simulation moved during Pause");
                 Require(camera.transform.position != cameraPosition, "Camera must be independent of paused performance");
                 camera.transform.position = cameraPosition;
-                File.AppendAllText(Folder + "/validation.txt", "PASS: music, bones, particles, clock frozen; camera independent\n");
+                File.AppendAllText(Folder + "/validation.txt", "PASS: music, bones, particles, clock frozen even after Recorder-style timeScale restoration; camera independent\n");
                 Capture(); control.Resume(); step = 5; deadline = now + 20;
             }
             else if (step == 5 && control.LiveSeconds > frozenTime + 3)

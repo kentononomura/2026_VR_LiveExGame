@@ -1,4 +1,5 @@
-﻿//CameraController.cs for UnityChan
+using Input = ProjectInput;
+//CameraController.cs for UnityChan
 //Original Script is here:
 //TAK-EMI / CameraController.cs
 //https://gist.github.com/TAK-EMI/d67a13b6f73bed32075d

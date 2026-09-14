@@ -43,6 +43,16 @@ namespace PVCapture
         private float previousTimeScale;
         private bool previousListenerPause;
         private Coroutine preparation;
+        private const string RecorderRecovery = "Stop Recorder, set Frame Rate > Playback to Variable (Cap FPS is not the playback mode), then Reset and Play before recording again.";
+
+        private bool RejectFixedRecording()
+        {
+            if (Time.captureDeltaTime <= 0) return false;
+            if (State == PlaybackState.Playing) Pause();
+            Status = "Fixed-rate recording is incompatible with this live. " + RecorderRecovery;
+            Debug.LogWarning("[PV Capture] " + Status, this);
+            return true;
+        }
 
         private void Awake()
         {
@@ -74,7 +84,7 @@ namespace PVCapture
             Time.timeScale = 0;
             AudioListener.pause = true;
             // AfterSceneLoad bootstraps have now run; remove their runtime instances, not source files.
-            foreach (var menu in FindObjectsByType<VRPauseMenu>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var menu in FindObjectsByType<VRPauseMenu>(FindObjectsInactive.Include))
             {
                 menu.gameObject.SetActive(false);
                 Destroy(menu.gameObject);
@@ -178,11 +188,7 @@ namespace PVCapture
         {
             if (State == PlaybackState.Paused) { Resume(); return; }
             if (State != PlaybackState.Ready) return;
-            if (Time.captureDeltaTime > 0)
-            {
-                Status = "Disable fixed simulation / use variable-frame-rate recording before Play.";
-                return;
-            }
+            if (RejectFixedRecording()) return;
             startDsp = AudioSettings.dspTime;
             foreach (var source in audioSources)
             {
@@ -200,12 +206,7 @@ namespace PVCapture
         private void Update()
         {
             if (State != PlaybackState.Playing) return;
-            if (Time.captureDeltaTime > 0)
-            {
-                Pause();
-                Status = "Paused: fixed simulation would desynchronize live effects. Disable it, then Resume.";
-                return;
-            }
+            if (RejectFixedRecording()) return;
             AdvanceLiveClock();
             if (LiveSeconds >= endPerformanceSeconds)
             {
@@ -242,11 +243,7 @@ namespace PVCapture
         public void Resume()
         {
             if (State != PlaybackState.Paused) return;
-            if (Time.captureDeltaTime > 0)
-            {
-                Status = "Disable fixed simulation / use variable-frame-rate recording before Resume.";
-                return;
-            }
+            if (RejectFixedRecording()) return;
             effects.Resume();
             State = PlaybackState.Playing;
             Status = "Playing (1x, synchronized)";

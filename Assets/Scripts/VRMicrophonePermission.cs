@@ -11,6 +11,26 @@ public static class VRMicrophonePermission
 {
     public static bool RequestFailed { get; private set; }
 
+    // Read only: the application's diagnostics must not change the user's mute setting.
+    public static bool? GetSystemMicrophoneMuted()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+            using (var audioManager = activity.Call<AndroidJavaObject>("getSystemService", "audio"))
+                return audioManager.Call<bool>("isMicrophoneMute");
+        }
+        catch (System.Exception)
+        {
+            return null;
+        }
+#else
+        return null;
+#endif
+    }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
     private static bool requestAttempted;
     private static PermissionCallbacks permissionCallbacks;

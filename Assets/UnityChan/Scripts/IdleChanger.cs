@@ -1,3 +1,4 @@
+using Input = ProjectInput;
 using UnityEngine;
 using System.Collections;
 

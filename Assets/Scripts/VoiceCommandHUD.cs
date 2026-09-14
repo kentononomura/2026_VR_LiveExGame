@@ -37,6 +37,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     [SerializeField] private Material housingMaterial;
     [SerializeField] private Material metalMaterial;
     [SerializeField] private Material detailMaterial;
+    [Range(0.25f, 1f)] [SerializeField] private float housingDepthScale = 0.5f;
     [SerializeField] private bool showVoicePointDebug;
     [Header("Pillar Mount")]
     [Min(0.05f)] [SerializeField] private float mountDepth = 0.28f;
@@ -93,16 +94,34 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     private Coroutine highlightCoroutine;
     private bool hasInitialPlacement;
     private GameObject billboardHousing;
+    private readonly List<VoiceCommandHUD> replicas = new List<VoiceCommandHUD>();
+
+    public Transform BillboardAnchor => billboardAnchor != null ? billboardAnchor : transform;
+
+    public VoiceCommandHUD CreateReplica(Transform anchor)
+    {
+        if (!Application.isPlaying || !useStageBillboard || anchor == BillboardAnchor) return null;
+        var root = new GameObject("Voice Billboard Display");
+        root.SetActive(false);
+        root.transform.SetParent(anchor, false);
+        var replica = root.AddComponent<VoiceCommandHUD>();
+        JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(this), replica);
+        replica.billboardAnchor = root.transform;
+        replica.enabled = isActiveAndEnabled;
+        replicas.Add(replica);
+        root.SetActive(true);
+        return replica;
+    }
 
 #if UNITY_EDITOR
     // Build the same visuals in edit mode without changing this scene component.
-    public GameObject CreateLayoutPreview()
+    public GameObject CreateLayoutPreview(Transform placement = null)
     {
         if (Application.isPlaying || !useStageBillboard) return null;
         var root = new GameObject("Voice Billboard Preview (not saved)");
         root.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
         root.tag = "EditorOnly";
-        root.transform.SetParent(billboardAnchor != null ? billboardAnchor : transform, false);
+        root.transform.SetParent(placement != null ? placement : BillboardAnchor, false);
         var builder = root.AddComponent<VoiceCommandHUD>();
         UnityEditor.EditorUtility.CopySerialized(this, builder);
         builder.billboardAnchor = root.transform;
@@ -141,6 +160,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         if (canvasRect != null) canvasRect.gameObject.SetActive(true);
         if (billboardHousing != null) billboardHousing.SetActive(true);
         ResetAllItemsImmediate();
+        foreach (VoiceCommandHUD replica in replicas)
+            if (replica != null) replica.enabled = true;
     }
 
     private void LateUpdate()
@@ -172,6 +193,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     public void HighlightCommand(string commandId)
     {
         if (!isActiveAndEnabled) return;
+        foreach (VoiceCommandHUD replica in replicas)
+            if (replica != null) replica.HighlightCommand(commandId);
         if (string.IsNullOrWhiteSpace(commandId) ||
             !items.TryGetValue(commandId, out ItemVisual target))
         {
@@ -189,6 +212,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     /// <summary>直近の声かけ判定を、次の判定まで表示します。表示のための再計算は行いません。</summary>
     public void ShowVoicePoint(VoicePointEvaluator.EvaluationResult? result)
     {
+        foreach (VoiceCommandHUD replica in replicas)
+            if (replica != null) replica.ShowVoicePoint(result);
         if (!showVoicePointDebug) return;
         if (voicePointText == null) BuildHUD();
         if (voicePointText == null) return;
@@ -327,6 +352,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         billboardHousing = new GameObject("Billboard Housing");
         billboardHousing.layer = gameObject.layer;
         billboardHousing.transform.SetParent(parent, false);
+        billboardHousing.transform.localScale = new Vector3(1f, 1f, Mathf.Clamp(housingDepthScale, 0.25f, 1f));
         billboardHousing.AddComponent<VoiceBillboardGeometry>();
         // Screen is at Z=0, with a raised bezel in front and equipment behind it.
         CreateHousingPart("Rounded Cabinet", new Vector3(0f, 0f, 0.12f),
@@ -420,6 +446,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
 
     private void OnDestroy()
     {
+        foreach (VoiceCommandHUD replica in replicas)
+            if (replica != null) Destroy(replica.gameObject);
         if (canvasRect != null) Destroy(canvasRect.gameObject);
         if (billboardHousing != null) Destroy(billboardHousing);
     }
@@ -593,6 +621,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
 
     private void OnDisable()
     {
+        foreach (VoiceCommandHUD replica in replicas)
+            if (replica != null) replica.enabled = false;
         if (highlightCoroutine != null)
         {
             StopCoroutine(highlightCoroutine);

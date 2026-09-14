@@ -1,3 +1,4 @@
+using Input = ProjectInput;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -56,7 +57,7 @@ public class TitleVoiceManager : MonoBehaviour
     private AudioClip audioClip;
     private int lastSamplePosition = 0;
     private bool isListening = false;
-    private bool isModelLoaded = false;
+    private volatile bool isModelLoaded = false;
     private float nextMicrophoneStartAttemptTime;
     private bool isTransitioning = false; // 二重ロード防止
     private bool isShuttingDown = false;
@@ -67,6 +68,14 @@ public class TitleVoiceManager : MonoBehaviour
     private float silentInputDuration;
     private bool hasWarnedAboutSilentInput;
     private string voiceModelStatus = "モデル準備待ち";
+    private string microphoneStatus = "マイク開始待ち";
+    private float microphoneProgressDeadline;
+    private float nextMicrophoneDiagnosticTime;
+    private bool applicationPaused;
+    private int recognitionGeneration;
+    public bool? IsSystemMicrophoneMuted { get; private set; }
+    public string MicrophoneStatus => microphoneStatus;
+    public bool HasSilentMicrophoneInput => silentInputDuration >= 2f;
 
     private const int SampleRate = 16000;
     private readonly List<UnityEngine.XR.InputDevice> leftHandDevices = new List<UnityEngine.XR.InputDevice>(1);
@@ -87,10 +96,11 @@ public class TitleVoiceManager : MonoBehaviour
         public VoskCommandType type;
         public byte[] audioData;
         public int audioLength;
+        public int generation;
     }
     
     private ConcurrentQueue<VoskCommand> commandQueue = new ConcurrentQueue<VoskCommand>();
-    private ConcurrentQueue<string> resultQueue = new ConcurrentQueue<string>();
+    private ConcurrentQueue<(int generation, string json)> resultQueue = new ConcurrentQueue<(int, string)>();
     private Thread workerThread;
 
     void Start()
@@ -175,11 +185,11 @@ public class TitleVoiceManager : MonoBehaviour
                     {
                         if (recognizer.AcceptWaveform(cmd.audioData, cmd.audioLength))
                         {
-                            resultQueue.Enqueue(recognizer.Result());
+                            resultQueue.Enqueue((cmd.generation, recognizer.Result()));
                         }
                         else
                         {
-                            resultQueue.Enqueue(recognizer.PartialResult());
+                            resultQueue.Enqueue((cmd.generation, recognizer.PartialResult()));
                         }
                     }
                     finally
@@ -189,7 +199,7 @@ public class TitleVoiceManager : MonoBehaviour
                 }
                 else if (cmd.type == VoskCommandType.FinalResult)
                 {
-                    resultQueue.Enqueue(recognizer.FinalResult());
+                    resultQueue.Enqueue((cmd.generation, recognizer.FinalResult()));
                 }
             }
             else
@@ -201,7 +211,12 @@ public class TitleVoiceManager : MonoBehaviour
 
     private void StartMicrophone()
     {
-        if (!VRMicrophonePermission.EnsureGranted()) return;
+        if (!VRMicrophonePermission.EnsureGranted())
+        {
+            microphoneStatus = VRMicrophonePermission.RequestFailed
+                ? "アプリのマイク権限が未許可" : "マイク権限の許可待ち";
+            return;
+        }
         if (Time.unscaledTime < nextMicrophoneStartAttemptTime) return;
         nextMicrophoneStartAttemptTime = Time.unscaledTime + 2f;
 
@@ -237,24 +252,47 @@ public class TitleVoiceManager : MonoBehaviour
             }
         }
 
-        audioClip = Microphone.Start(microphoneDevice, true, VoskPcmUtility.MicrophoneBufferSeconds, SampleRate);
+        try
+        {
+            audioClip = Microphone.Start(microphoneDevice, true, VoskPcmUtility.MicrophoneBufferSeconds, SampleRate);
+        }
+        catch (System.Exception ex)
+        {
+            microphoneStatus = "マイク起動例外・再試行中";
+            Debug.LogWarning($"[Vosk] タイトル用マイク起動例外: {ex.Message}");
+            return;
+        }
         isListening = audioClip != null;
 
         if (isListening)
         {
+            lastSamplePosition = 0;
+            lastMicrophoneDataTime = -1f;
+            microphoneProgressDeadline = Time.unscaledTime + 5f;
+            microphoneStatus = "録音データ待ち";
             string selectedName = string.IsNullOrEmpty(microphoneDevice)
                 ? "Quest/Android システム既定マイク"
                 : microphoneDevice;
-            Debug.Log($"[Vosk] タイトル用の音声認識マイクを開始しました: {selectedName}");
+            Debug.Log($"[Vosk] タイトル用マイク開始: {selectedName}, rate={audioClip.frequency}, channels={audioClip.channels}");
         }
         else
         {
+            microphoneStatus = "マイク起動失敗・再試行中";
             Debug.LogError("[Vosk] マイクの開始に失敗しました。アプリのマイク権限を確認してください。");
         }
     }
 
     void Update()
     {
+        if (applicationPaused || isShuttingDown) return;
+        if (Time.unscaledTime >= nextMicrophoneDiagnosticTime)
+        {
+            nextMicrophoneDiagnosticTime = Time.unscaledTime + 1f;
+            bool? muted = VRMicrophonePermission.GetSystemMicrophoneMuted();
+            if (muted != IsSystemMicrophoneMuted)
+                Debug.Log($"[Microphone] OS microphone muted={muted}");
+            IsSystemMicrophoneMuted = muted;
+        }
         // 入力が止まった場合にメーターを滑らかに0へ戻す。
         microphoneInputLevel = Mathf.MoveTowards(
             microphoneInputLevel,
@@ -355,9 +393,10 @@ public class TitleVoiceManager : MonoBehaviour
         }
 
         // メインスレッドでの結果受け取りと処理
-        while (resultQueue.TryDequeue(out string result))
+        while (resultQueue.TryDequeue(out var result))
         {
-            ProcessRecognitionResult(result);
+            if (result.generation == recognitionGeneration)
+                ProcessRecognitionResult(result.json);
         }
 
         // プッシュ・トゥ・トークのトリガーイベント
@@ -370,6 +409,13 @@ public class TitleVoiceManager : MonoBehaviour
         }
 
         int currentPosition = Microphone.GetPosition(microphoneDevice);
+        if ((currentPosition < 0 || currentPosition == lastSamplePosition) &&
+            Time.unscaledTime >= microphoneProgressDeadline)
+        {
+            Debug.LogWarning($"[Vosk] タイトル用マイクの録音データが5秒間停止。再起動します。position={currentPosition}, recording={Microphone.IsRecording(microphoneDevice)}, systemMuted={IsSystemMicrophoneMuted}");
+            StopMicrophoneForRetry("録音停止・再接続中");
+            return;
+        }
         if (currentPosition >= 0 && lastSamplePosition != currentPosition)
         {
             int sampleCount = currentPosition - lastSamplePosition;
@@ -379,9 +425,16 @@ public class TitleVoiceManager : MonoBehaviour
             try
             {
                 System.Span<float> sampleChunk = new System.Span<float>(samples, 0, sampleCount);
-                audioClip.GetData(sampleChunk, lastSamplePosition);
+                if (!audioClip.GetData(sampleChunk, lastSamplePosition))
+                {
+                    Debug.LogWarning("[Vosk] タイトル用マイクのGetDataに失敗。再起動します。");
+                    StopMicrophoneForRetry("録音データ読取失敗・再接続中");
+                    return;
+                }
                 lastSamplePosition = currentPosition;
                 lastMicrophoneDataTime = Time.unscaledTime;
+                microphoneProgressDeadline = Time.unscaledTime + 5f;
+                microphoneStatus = "録音データ受信中";
 
                 float maxVal = 0f;
                 double squareSum = 0d;
@@ -399,27 +452,29 @@ public class TitleVoiceManager : MonoBehaviour
                     microphoneInputLevel = Mathf.Max(microphoneInputLevel, detectedLevel);
                 }
 
+                // 音量と無音の診断はトリガー操作と独立して行う。
+                if (maxVal < 0.001f)
+                {
+                    silentInputDuration += (float)sampleCount / audioClip.frequency;
+                    if (silentInputDuration >= 2f && !hasWarnedAboutSilentInput)
+                    {
+                        hasWarnedAboutSilentInput = true;
+                        Debug.LogWarning($"[Vosk] (Title) 入力音量が2秒以上ほぼゼロです。systemMuted={IsSystemMicrophoneMuted}, device={microphoneDevice}, position={currentPosition}");
+                    }
+                }
+                else
+                {
+                    silentInputDuration = 0f;
+                }
+
                 // 離したフレームの語尾も、確定要求より先に必ずVoskへ渡す。
                 if (isHolding || isReleased)
                 {
-                    if (maxVal < 0.001f)
-                    {
-                        silentInputDuration += (float)sampleCount / audioClip.frequency;
-                        if (silentInputDuration >= 2f && !hasWarnedAboutSilentInput)
-                        {
-                            hasWarnedAboutSilentInput = true;
-                            Debug.LogWarning("[Vosk] 🎤 (Title) 音声入力が2秒以上無音です。マイクのミュートと選択デバイスを確認してください。");
-                        }
-                    }
-                    else
-                    {
-                        silentInputDuration = 0f;
-                    }
-
                     byte[] byteData = VoskPcmUtility.RentAndConvert(sampleChunk, out int byteCount);
                     commandQueue.Enqueue(new VoskCommand
                     {
                         type = VoskCommandType.ProcessAudio,
+                        generation = recognitionGeneration,
                         audioData = byteData,
                         audioLength = byteCount
                     });
@@ -433,9 +488,35 @@ public class TitleVoiceManager : MonoBehaviour
 
         if (isReleased)
         {
-            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult });
+            commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.FinalResult, generation = recognitionGeneration });
             Debug.Log($"<color=#FF8800>[Vosk] 🛑 聞き取りを終了しました</color>");
         }
+    }
+
+    private void StopMicrophoneForRetry(string status)
+    {
+        // Ignore results still being produced by the worker from the previous capture.
+        recognitionGeneration++;
+        if (isListening) Microphone.End(microphoneDevice);
+        if (audioClip != null) Destroy(audioClip);
+        audioClip = null;
+        isListening = false;
+        lastSamplePosition = 0;
+        lastMicrophoneDataTime = -1f;
+        microphoneInputLevel = 0f;
+        silentInputDuration = 0f;
+        hasWarnedAboutSilentInput = false;
+        wasRightTriggerPressed = false;
+        microphoneStatus = status;
+        nextMicrophoneStartAttemptTime = Time.unscaledTime + 2f;
+        commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        applicationPaused = paused;
+        if (paused) StopMicrophoneForRetry("アプリ中断中");
+        else nextMicrophoneStartAttemptTime = Time.unscaledTime + 1f;
     }
 
     private void ProcessRecognitionResult(string jsonResult)

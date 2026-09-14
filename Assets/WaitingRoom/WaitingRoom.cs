@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using Input = ProjectInput;
+using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
 

@@ -1,9 +1,10 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class VRPhotoViewer : MonoBehaviour
+public class VRPhotoViewer : MonoBehaviour, ISceneLoadReady
 {
     [Header("Default Settings")]
     [SerializeField] private Texture2D noPhotoTexture;
@@ -124,9 +125,25 @@ public class VRPhotoViewer : MonoBehaviour
     private UnityEngine.UI.Text vrRankText;
     private UnityEngine.UI.Text vrDetailsText;
     private CountUpUI scoreCountUpUI;
+    private AudioSource resultBgmSource;
+    private bool initializationComplete;
+    private bool presentationStarted;
+
+    public bool IsSceneLoadReady => initializationComplete;
+    public string SceneLoadStatus => initializationComplete
+        ? "リザルト表示準備完了"
+        : "写真とスコア表示を準備中";
 
     private void Awake()
     {
+        resultBgmSource = GetComponent<AudioSource>();
+        if (resultBgmSource != null)
+        {
+            // Scene側の設定にかかわらず、フェード完了前の自動再生を止める。
+            resultBgmSource.playOnAwake = false;
+            resultBgmSource.Stop();
+        }
+
         screenRenderer = GetComponent<Renderer>();
         SetupPhotoDisplayMaterial();
         SetupVRUI();
@@ -350,14 +367,60 @@ public class VRPhotoViewer : MonoBehaviour
 
     private void Start()
     {
-        // Fade in when scene starts
-        if (VRScreenFader.Instance != null)
+        StartCoroutine(PrepareResultPresentation());
+    }
+
+    private IEnumerator PrepareResultPresentation()
+    {
+        photos = PhotoGalleryManager.GetPhotos();
+        // 写真・Material・UIは黒画面中に確定するが、カウントアップとSEはまだ開始しない。
+        UpdateScreenTexture(false);
+
+        AudioClip bgmClip = resultBgmSource != null ? resultBgmSource.clip : null;
+        BeginLoadingAudioData(bgmClip);
+        BeginLoadingAudioData(scoreCountLoopClip);
+        BeginLoadingAudioData(scoreReachedClip);
+
+        while (IsAudioDataLoading(bgmClip) ||
+               IsAudioDataLoading(scoreCountLoopClip) ||
+               IsAudioDataLoading(scoreReachedClip))
         {
-            VRScreenFader.Instance.FadeIn(1.0f, null);
+            yield return null;
         }
 
-        photos = PhotoGalleryManager.GetPhotos();
-        UpdateScreenTexture();
+        initializationComplete = true;
+        yield return StartCoroutine(BeginPresentationWhenVisible());
+    }
+
+    private static void BeginLoadingAudioData(AudioClip clip)
+    {
+        if (clip != null && clip.loadState == AudioDataLoadState.Unloaded)
+        {
+            clip.LoadAudioData();
+        }
+    }
+
+    private static bool IsAudioDataLoading(AudioClip clip)
+    {
+        return clip != null && clip.loadState == AudioDataLoadState.Loading;
+    }
+
+    private IEnumerator BeginPresentationWhenVisible()
+    {
+        VRScreenFader screenFader = VRScreenFader.Instance;
+        while (screenFader != null && !screenFader.IsScreenVisible)
+        {
+            yield return null;
+        }
+
+        // フェードキャンバスが消えた次のフレームからBGMとSEを開始する。
+        yield return null;
+        presentationStarted = true;
+        if (resultBgmSource != null)
+        {
+            resultBgmSource.Play();
+        }
+        UpdateScreenTexture(true);
     }
 
     private bool isRightTriggerDown = false;
@@ -415,7 +478,7 @@ public class VRPhotoViewer : MonoBehaviour
 
     private void OnNextPressed(InputAction.CallbackContext context)
     {
-        if (VRPauseMenu.IsGamePaused()) return;
+        if (!presentationStarted || VRPauseMenu.IsGamePaused()) return;
         float val = context.ReadValue<float>();
         if (val >= 0.8f)
         {
@@ -435,7 +498,7 @@ public class VRPhotoViewer : MonoBehaviour
 
     private void OnPrevPressed(InputAction.CallbackContext context)
     {
-        if (VRPauseMenu.IsGamePaused()) return;
+        if (!presentationStarted || VRPauseMenu.IsGamePaused()) return;
         float val = context.ReadValue<float>();
         if (val >= 0.8f)
         {
@@ -454,7 +517,7 @@ public class VRPhotoViewer : MonoBehaviour
         }
     }
 
-    private void UpdateScreenTexture()
+    private void UpdateScreenTexture(bool playScorePresentation = true)
     {
         if (screenRenderer == null) return;
 
@@ -475,7 +538,10 @@ public class VRPhotoViewer : MonoBehaviour
                 else vrRankText.color = Color.blue;
 
                 int displayedLikeCount = p.TotalScore * scoreDisplayMultiplier;
-                scoreCountUpUI.PlayCountUp(displayedLikeCount);
+                if (playScorePresentation && scoreCountUpUI != null)
+                {
+                    scoreCountUpUI.PlayCountUp(displayedLikeCount);
+                }
                 
                 // Set the breakdown text
                 vrDetailsText.text = FormatScoreDetail(centerDetailFormat, p.CenterBonus, "Center") + "\n" +

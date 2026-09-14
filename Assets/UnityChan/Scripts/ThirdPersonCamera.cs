@@ -1,4 +1,5 @@
-﻿//
+using Input = ProjectInput;
+//
 // Unityちゃん用の三人称カメラ
 // 
 // 2013/06/07 N.Kobyasahi

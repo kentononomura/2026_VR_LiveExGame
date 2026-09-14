@@ -72,7 +72,7 @@ namespace PVCapture.Editor
                 }
             }
             EditorGUILayout.Space();
-            EditorGUILayout.HelpBox("Capture: Game view 16:9 / 1920×1080. Use Recorder > Game View at 1920×1080. Leave fixed simulation/capture framerate disabled for real-time DSP synchronization. No independent seek or slow playback is available.", MessageType.Info);
+            EditorGUILayout.HelpBox("Recorder Window: Movie / Game View, 1920×1080. Frame Rate > Playback MUST be Variable; Max FPS: 30 or 60. Turning off Cap FPS while Playback is Constant does not help. If the live stopped: Stop Recording, select Variable, Reset, Play, then start a new recording. No independent seek or slow playback is available.", MessageType.Info);
             EditorGUILayout.EndScrollView();
         }
 
@@ -88,6 +88,8 @@ namespace PVCapture.Editor
         {
             EditorGUILayout.LabelField("Synchronized live playback", EditorStyles.boldLabel);
             EditorGUILayout.LabelField(EditorApplication.isPlaying ? control.Status : "Enter Play Mode to load the live assets.");
+            if (EditorApplication.isPlaying && Time.captureDeltaTime > 0)
+                EditorGUILayout.HelpBox("Recorder is forcing fixed simulation time. Stop Recording and change Frame Rate > Playback from Constant to Variable, then Reset and Play. Cap FPS is a separate setting.", MessageType.Warning);
             EditorGUILayout.LabelField($"Live: {control.LiveSeconds:F2}s   Music: {control.MusicSeconds:F2}s");
             EditorGUILayout.BeginHorizontal();
             using (new EditorGUI.DisabledScope(!EditorApplication.isPlaying || control.State != PVCaptureController.PlaybackState.Ready))

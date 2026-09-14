@@ -29,6 +29,11 @@ public class VRScreenFader : MonoBehaviour
     private bool managedSceneLoadInProgress;
 
     public bool IsSceneTransitioning => isSceneTransitioning;
+    public bool IsScreenVisible =>
+        !isSceneTransitioning &&
+        !isFading &&
+        fadeImage != null &&
+        fadeImage.color.a <= 0.001f;
 
     private void Awake()
     {

@@ -15,6 +15,7 @@ namespace PVCapture
         }
         private readonly List<Audience> audience = new List<Audience>();
         private readonly List<Behaviour> suspended = new List<Behaviour>();
+        private readonly List<ParticleSystem> suspendedParticles = new List<ParticleSystem>();
         private Transform[] heldTransforms;
         private Vector3[] heldPositions, heldScales;
         private Quaternion[] heldRotations;
@@ -64,6 +65,14 @@ namespace PVCapture
         public void Suspend(GameObject root)
         {
             if (suspended.Count > 0 || root == null) return;
+            // Recorder temporarily restores timeScale after its first captured frame. Pause
+            // particle simulation explicitly, including particles spawned since Prepare().
+            foreach (var particles in root.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (!particles.isPlaying) continue;
+                suspendedParticles.Add(particles);
+                particles.Pause(false);
+            }
             // Some legacy scripts change transforms/blend shapes even with deltaTime == 0.
             foreach (var behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
             {
@@ -110,6 +119,10 @@ namespace PVCapture
         public void Resume()
         {
             heldTransforms = null;
+            // Resume only systems that were running; do not start dormant effects.
+            foreach (var particles in suspendedParticles)
+                if (particles != null) particles.Play(false);
+            suspendedParticles.Clear();
             foreach (var behaviour in suspended) if (behaviour != null) behaviour.enabled = true;
             suspended.Clear();
         }
@@ -117,6 +130,7 @@ namespace PVCapture
         public void Release()
         {
             heldTransforms = null;
+            suspendedParticles.Clear();
             suspended.Clear();
             foreach (var item in audience)
             {

@@ -45,7 +45,11 @@ Gameビュー内の右クリックでマウスをロックして操作を開始�
 
 ## 1920×1080収録
 
-Gameビューを16:9または1920×1080に設定します。導入済みUnity Recorderを使う場合はGame View入力・1920×1080を選択します。**固定シミュレーション時間を強制する設定は使わず、リアルタイムで収録してください。** 音声DSP時計と映像の進行を一致させるためです。負荷が高い場合はフレーム落ちが起こり得ます。
+Gameビューを16:9または1920×1080に設定します。Recorder WindowでMovie、Game View入力、1920×1080を選択します。**Frame Rate > Playbackを必ずVariableに設定し、Max FPSを30または60にします。ConstantのままCap FPSを無効にしても解決しません。** ConstantはCap FPSの有無にかかわらず固定シミュレーション時間を設定するため、PV側の同期保護がライブを停止させます。Variable非対応のProResやTimeline Recorder Clipは今回の収録には使いません。負荷が高い場合はフレーム落ちが起こり得ます。
+
+録画開始で停止した場合は、Stop Recording → PlaybackをVariableへ変更 → PV CaptureのReset → Play → 再録画の順に操作してください。録画中に設定だけを書き換えたり、Time.captureDeltaTimeを強制的に0へ戻したりしないでください。
+
+最初から撮る場合は、Play ModeでResetしてReadyを待ち、カメラPresetを選択し、Recorderの録画を開始してからPV CaptureのPlayを押します。冒頭の待機映像は編集で除去してください。Include Audio有効時の音声出力はRecorderへ渡るため、収録中にスピーカーから聞こえなくなる場合があります。完成ファイルの音声も短いテスト録画で確認してください。
 
 操作パネルはEditor専用なので映像には写りません。Show capture UIは撮影用ライブ配下のCanvasだけを切り替えます。本編の評価・音声認識UIは生成しません。
 

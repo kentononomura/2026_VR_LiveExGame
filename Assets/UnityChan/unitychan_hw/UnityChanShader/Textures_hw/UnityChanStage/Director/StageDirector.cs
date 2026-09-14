@@ -1,3 +1,4 @@
+using Input = ProjectInput;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -26,6 +27,16 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
     public float overlayIntensity = 1.0f;
 
     public float lookatIntensity = 0.83f;
+
+    [Header("Opening Cheer")]
+    [Tooltip("シーン準備・フェードイン完了後、パフォーマンスの前に流す歓声です。")]
+    public AudioClip openingCheerClip;
+
+    [Tooltip("フェードアウトを含む歓声の再生時間です。")]
+    [Min(0.01f)] public float openingCheerDuration = 4f;
+
+    [Tooltip("歓声の再生時間のうち、最後に音量を下げる時間です。")]
+    [Min(0.01f)] public float openingCheerFadeDuration = 1f;
 
     [Header("Performance Synchronization")]
     [Tooltip("ダンスとLipSyncを音楽のDSP時計へ同期します。再生時刻の強制変更は行いません。")]
@@ -194,6 +205,20 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
             while (audioIsLoading);
         }
 
+        // 歓声も黒画面中にロードし、開演時の音源読み込み待ちを避ける。
+        if (openingCheerClip != null)
+        {
+            initializationStatus = "歓声音源を準備中";
+            if (openingCheerClip.loadState == AudioDataLoadState.Unloaded)
+            {
+                openingCheerClip.LoadAudioData();
+            }
+            while (openingCheerClip.loadState == AudioDataLoadState.Loading)
+            {
+                yield return null;
+            }
+        }
+
         // 初回Renderer・Animator更新を黒画面中に済ませる。
         initializationStatus = "初回描画を安定化中";
         yield return null;
@@ -211,14 +236,57 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
             yield return null;
         }
 
-        // フェードキャンバスが完全に消えたフレームの次から、Director・ダンス・
-        // LipSyncを同じ0秒地点で開始する。これにより端末速度に依存して音だけが
-        // 黒画面中に先行することを防ぐ。
+        // 画面表示後に歓声を流し、フェードアウト完了まで全Animatorを停止しておく。
+        // その後Director・ダンス・LipSyncを同じ0秒地点で開始し、既存の同期を維持する。
         yield return null;
+        yield return PlayOpeningCheer();
         if (directorAnimator != null) directorAnimator.speed = 1f;
         SetPerformanceAnimatorSpeed(1f);
         initializationStatus = "演出開始済み";
-        Debug.Log("[StageDirector] フェードイン完了後にパフォーマンスを開始しました。");
+        Debug.Log("[StageDirector] フェードイン・開演前の歓声完了後にパフォーマンスを開始しました。");
+    }
+
+    private IEnumerator PlayOpeningCheer()
+    {
+        if (openingCheerClip == null) yield break;
+        if (openingCheerClip.loadState != AudioDataLoadState.Loaded)
+        {
+            Debug.LogWarning("[StageDirector] 歓声音源を読み込めなかったため、演出を開始します。");
+            yield break;
+        }
+
+        // 音楽用AudioSourceから分離し、音楽のDSP同期や音量へ影響させない。
+        GameObject cheerObject = new GameObject("OpeningCheer");
+        cheerObject.transform.SetParent(transform, false);
+        AudioSource cheerSource = cheerObject.AddComponent<AudioSource>();
+        cheerSource.playOnAwake = false;
+        cheerSource.loop = false;
+        cheerSource.spatialBlend = 0f;
+        cheerSource.clip = openingCheerClip;
+
+        float duration = Mathf.Min(Mathf.Max(0.01f, openingCheerDuration), openingCheerClip.length);
+        float fadeDuration = Mathf.Clamp(openingCheerFadeDuration, 0.01f, duration);
+        double startedAt = AudioSettings.dspTime;
+        initializationStatus = "開演前の歓声を再生中";
+        cheerSource.Play();
+        try
+        {
+            while (AudioSettings.dspTime - startedAt < duration)
+            {
+                float elapsed = (float)(AudioSettings.dspTime - startedAt);
+                cheerSource.volume = 1f - Mathf.Clamp01((elapsed - (duration - fadeDuration)) / fadeDuration);
+                yield return null;
+            }
+        }
+        finally
+        {
+            if (cheerSource != null)
+            {
+                cheerSource.volume = 0f;
+                cheerSource.Stop();
+            }
+            if (cheerObject != null) Destroy(cheerObject);
+        }
     }
 
     /// <summary>

@@ -32,6 +32,10 @@ public sealed class TestSceneLayoutWindow : EditorWindow
             if (state == PlayModeStateChange.ExitingEditMode) ClearPreview();
         };
         EditorSceneManager.sceneClosing += (scene, removing) => ClearPreview();
+        Undo.undoRedoPerformed += () =>
+        {
+            if (previewRoot != null && !EditorApplication.isPlayingOrWillChangePlaymode) ShowPreview();
+        };
     }
 
     [MenuItem("Tools/TestScene/観客配置・ステージプレビュー")]
@@ -50,6 +54,8 @@ public sealed class TestSceneLayoutWindow : EditorWindow
             if (GUILayout.Button("1. ステージプレビューを表示・更新")) ShowPreview();
             if (GUILayout.Button("2. 観客を追加／選択")) AddAudience();
             if (GUILayout.Button("3. 掲示板を表示／選択")) SelectBillboard();
+            if (GUILayout.Button("選択した掲示板を複製")) DuplicateBillboard();
+            DrawBillboardSelection();
             if (GUILayout.Button("配置をシーンに保存")) SaveLayout();
             if (GUILayout.Button("プレビューを消す")) ClearPreview();
             EditorGUILayout.Space();
@@ -147,7 +153,16 @@ public sealed class TestSceneLayoutWindow : EditorWindow
     {
         VoiceCommandHUD hud = FindBillboard(scene);
         if (hud == null) return;
-        GameObject visual = hud.CreateLayoutPreview();
+        AddBillboardPreview(hud, hud.BillboardAnchor);
+        foreach (GameObject root in scene.GetRootGameObjects())
+            foreach (VoiceBillboardPlacement placement in root.GetComponentsInChildren<VoiceBillboardPlacement>(true))
+                if (placement.source != null && placement.transform != placement.source.BillboardAnchor)
+                    AddBillboardPreview(placement.source, placement.transform);
+    }
+
+    private static void AddBillboardPreview(VoiceCommandHUD hud, Transform anchor)
+    {
+        GameObject visual = hud.CreateLayoutPreview(anchor);
         if (visual == null) return;
         billboardPreviews.Add(visual);
         foreach (Transform child in visual.GetComponentsInChildren<Transform>(true))
@@ -156,6 +171,47 @@ public sealed class TestSceneLayoutWindow : EditorWindow
             foreach (Component component in child.GetComponents<Component>())
                 component.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild | HideFlags.NotEditable;
         }
+    }
+
+    private static void DrawBillboardSelection()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.path != "Assets/Scenes/TestScene.unity") return;
+        EditorGUILayout.LabelField("保存対象のモニター", EditorStyles.boldLabel);
+        VoiceCommandHUD hud = FindBillboard(scene);
+        if (hud != null && GUILayout.Button(hud.BillboardAnchor.name))
+            Selection.activeGameObject = hud.BillboardAnchor.gameObject;
+        foreach (GameObject root in scene.GetRootGameObjects())
+            foreach (VoiceBillboardPlacement placement in root.GetComponentsInChildren<VoiceBillboardPlacement>(true))
+                if (placement.source != null && placement.transform != placement.source.BillboardAnchor && GUILayout.Button(placement.name))
+                    Selection.activeGameObject = placement.gameObject;
+    }
+
+    public static void DuplicateBillboard()
+    {
+        StageDirector director = FindDirector();
+        if (director == null) return;
+        VoiceCommandHUD source = FindBillboard(director.gameObject.scene);
+        if (source == null) return;
+        Transform original = source.BillboardAnchor;
+        var selected = Selection.activeGameObject != null
+            ? Selection.activeGameObject.GetComponentInParent<VoiceBillboardPlacement>() : null;
+        if (selected != null && selected.gameObject.scene == director.gameObject.scene && selected.source != null)
+        { source = selected.source; original = selected.transform; }
+        // Create only a persistent anchor, never clone temporary preview geometry.
+        ClearPreview();
+        var copy = new GameObject(GameObjectUtility.GetUniqueNameForSibling(original.parent, "Stage Voice Billboard"));
+        SceneManager.MoveGameObjectToScene(copy, director.gameObject.scene);
+        copy.transform.SetParent(original.parent, false);
+        copy.transform.localPosition = original.localPosition + original.localRotation * Vector3.right * 0.4f;
+        copy.transform.localRotation = original.localRotation;
+        copy.transform.localScale = original.localScale;
+        copy.AddComponent<VoiceBillboardPlacement>().source = source;
+        Undo.RegisterCreatedObjectUndo(copy, "Duplicate voice billboard");
+        EditorSceneManager.MarkSceneDirty(director.gameObject.scene);
+        ShowPreview();
+        Selection.activeGameObject = copy;
+        Tools.current = Tool.Move;
     }
 
     public static void SelectBillboard()

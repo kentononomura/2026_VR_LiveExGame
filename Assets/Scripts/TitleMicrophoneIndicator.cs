@@ -151,15 +151,27 @@ public sealed class TitleMicrophoneIndicator : MonoBehaviour
             return;
         }
 
+        if (voiceManager.IsSystemMicrophoneMuted == true)
+        {
+            SetState($"{labelText}: QuestのOSでマイクミュート中", waitingColor, 0f);
+            return;
+        }
+
         if (!voiceManager.IsMicrophoneListening)
         {
-            SetState($"{labelText}: マイク開始待ち...", waitingColor, 0f);
+            SetState($"{labelText}: {voiceManager.MicrophoneStatus}...", waitingColor, 0f);
             return;
         }
 
         if (!voiceManager.HasMicrophoneDataStream)
         {
             SetState($"{labelText}: 録音データ待ち...", waitingColor, 0f);
+            return;
+        }
+
+        if (voiceManager.HasSilentMicrophoneInput)
+        {
+            SetState($"{labelText}: 録音中・音量が小さいか無音", waitingColor, voiceManager.MicrophoneInputLevel);
             return;
         }
 
