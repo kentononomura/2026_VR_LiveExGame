@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: VoiceBillboardHousing
+  m_Name: VoiceBillboardDetails
   m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -48,13 +48,13 @@ Material:
     - _SampleGI: 0
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
-    - _Metallic: 0.25
-    - _Smoothness: 0.28
+    - _Metallic: 0
+    - _Smoothness: 0.15
     - _Surface: 0
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 0.10, g: 0.115, b: 0.135, a: 1}
+    - _BaseColor: {r: 0.009, g: 0.012, b: 0.016, a: 1}
     - _Color: {r: 0.044999972, g: 0.054999977, b: 0.07499998, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 054a7a190fd1ec747a3dfba32c8d0b7e, type: 3}
+  m_Name: PVCameraPresets
+  m_EditorClassIdentifier: Assembly-CSharp::PVCapture.PVCameraPreset
+  views:
+  - label: Stage wide
+    saved: 1
+    position: {x: 0, y: 2.2, z: 8}
+    rotation: {x: 0, y: 0.997667, z: -0.06826846, w: 0}
+    fieldOfView: 60
+  - label: Front
+    saved: 1
+    position: {x: 0, y: 1.35, z: 3}
+    rotation: {x: 0, y: 0.9991361, z: -0.041558642, w: 0}
+    fieldOfView: 50
+  - label: Face close-up
+    saved: 1
+    position: {x: 0.027662413, y: 1.4292785, z: 2.7109125}
+    rotation: {x: -0.00005855305, y: 0.9999368, z: 0.009331389, w: 0.006274503}
+    fieldOfView: 40
+  - label: Low angle
+    saved: 1
+    position: {x: 0.9940239, y: 0.33767325, z: 3.5689905}
+    rotation: {x: 0.017417075, y: 0.9823173, z: 0.14283249, w: -0.11978433}
+    fieldOfView: 50
+  - label: Stage right
+    saved: 1
+    position: {x: 3.2475152, y: 1.9113185, z: 3.6189435}
+    rotation: {x: 0.030126559, y: -0.93984324, z: 0.08600201, w: 0.32922775}
+    fieldOfView: 50
+  - label: Stage left
+    saved: 1
+    position: {x: -3.626118, y: 1.945253, z: 3.6360462}
+    rotation: {x: 0.052767683, y: 0.89035845, z: -0.10693145, w: 0.43936682}
+    fieldOfView: 50
+  - label: High diagonal
+    saved: 1
+    position: {x: 3, y: 3.5, z: 5}
+    rotation: {x: -0.05178345, y: 0.94540703, z: -0.1869547, w: -0.26186255}
+    fieldOfView: 50
+  - label: Left diagonal
+    saved: 1
+    position: {x: -3, y: 2.5, z: 5}
+    rotation: {x: 0.031377096, y: 0.9570339, z: -0.113281265, w: 0.26508304}
+    fieldOfView: 50
+  - label: Overhead wide
+    saved: 1
+    position: {x: 0, y: 5, z: 8}
+    rotation: {x: 0, y: 0.9743912, z: -0.2248595, w: 0}
+    fieldOfView: 50
+  - label: Audience wide
+    saved: 1
+    position: {x: -0.1280728, y: 1.2423683, z: 7.6940393}
+    rotation: {x: 0.00009221976, y: 0.9998312, z: -0.01761332, w: 0.005234909}
+    fieldOfView: 70

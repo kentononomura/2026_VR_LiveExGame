@@ -35,8 +35,16 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     [Tooltip("掲示板表面の中心。Canvasの正面はローカル-Z方向です。")]
     [SerializeField] private Transform billboardAnchor;
     [SerializeField] private Material housingMaterial;
+    [SerializeField] private Material metalMaterial;
+    [SerializeField] private Material detailMaterial;
     [SerializeField] private bool showVoicePointDebug;
-    [Min(0f)] [SerializeField] private float supportHeight = 0.6f;
+    [Header("Pillar Mount")]
+    [Min(0.05f)] [SerializeField] private float mountDepth = 0.28f;
+    [SerializeField] private bool showMountingHardware = true;
+    [Header("Screen Lighting")]
+    [Range(0.4f, 1f)] [SerializeField] private float screenBrightness = 0.9f;
+    [SerializeField] private Color frameLightColor = new Color(0.9f, 0.25f, 0.46f, 1f);
+    [Range(0f, 1f)] [SerializeField] private float frameLightIntensity = 0.55f;
 
     [Header("Placement")]
     [Min(0.1f)]
@@ -72,6 +80,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         public RectTransform rectTransform;
         public Image background;
         public TMP_Text label;
+        public Color backgroundColor;
+        public Color textColor;
     }
 
     private readonly Dictionary<string, ItemVisual> items =
@@ -233,7 +243,12 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         accentRect.anchorMax = new Vector2(1f, 1f);
         accentRect.pivot = new Vector2(0.5f, 1f);
         accentRect.anchoredPosition = Vector2.zero;
-        accentRect.sizeDelta = new Vector2(0f, 8f);
+        accentRect.sizeDelta = new Vector2(0f, useStageBillboard ? 3f : 8f);
+        if (useStageBillboard)
+        {
+            accent.color = LitScreenColor(frameLightColor * new Color(1f, 1f, 1f, frameLightIntensity));
+            BuildScreenFrame();
+        }
 
         TMP_Text headingText = CreateText("Heading", canvasRect, heading, 38f);
         RectTransform headingRect = headingText.rectTransform;
@@ -294,6 +309,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
                 32f);
             StretchToParent(label.rectTransform, 16f, 5f);
             label.alignment = TextAlignmentOptions.Center;
+            if (useStageBillboard) label.fontStyle = FontStyles.Bold;
 
             ItemVisual visual = new ItemVisual
             {
@@ -311,21 +327,38 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         billboardHousing = new GameObject("Billboard Housing");
         billboardHousing.layer = gameObject.layer;
         billboardHousing.transform.SetParent(parent, false);
-        // Canvas faces -Z. Keep the front of the opaque housing behind the screen.
-        CreateHousingPart("Cabinet", new Vector3(0f, 0f, 0.09f),
-            new Vector3(screenSize.x + 0.12f, screenSize.y + 0.12f, 0.16f));
-        if (supportHeight <= 0f) return;
-        float bottom = -screenSize.y * 0.5f - 0.06f;
-        foreach (float side in new[] { -1f, 1f })
+        billboardHousing.AddComponent<VoiceBillboardGeometry>();
+        // Screen is at Z=0, with a raised bezel in front and equipment behind it.
+        CreateHousingPart("Rounded Cabinet", new Vector3(0f, 0f, 0.12f),
+            new Vector3(screenSize.x + 0.18f, screenSize.y + 0.18f, 0.2f), true);
+        CreateHousingPart("Rear Service Cover", new Vector3(0f, 0f, 0.24f),
+            new Vector3(screenSize.x * 0.88f, screenSize.y * 0.86f, 0.09f), true);
+        for (int side = -1; side <= 1; side += 2)
         {
-            CreateHousingPart("Support", new Vector3(side * screenSize.x * 0.32f,
-                bottom - supportHeight * 0.5f, 0.09f), new Vector3(0.07f, supportHeight, 0.1f));
+            CreateHousingPart("Metal Bezel Horizontal", new Vector3(0f, side * (screenSize.y * 0.5f + 0.025f), -0.008f),
+                new Vector3(screenSize.x + 0.12f, 0.065f, 0.065f), true, metalMaterial);
+            CreateHousingPart("Metal Bezel Vertical", new Vector3(side * (screenSize.x * 0.5f + 0.025f), 0f, -0.008f),
+                new Vector3(0.065f, screenSize.y, 0.065f), true, metalMaterial);
         }
-        CreateHousingPart("Base", new Vector3(0f, bottom - supportHeight, 0.09f),
-            new Vector3(screenSize.x + 0.2f, 0.08f, 0.5f));
+        // Shallow dark recesses read as ventilation slots without extra lights or transparency.
+        for (int i = 0; i < 6; i++)
+            CreateHousingPart("Rear Vent", new Vector3(-screenSize.x * 0.28f, (i - 2.5f) * 0.055f, 0.289f),
+                new Vector3(screenSize.x * 0.22f, 0.014f, 0.008f));
+        if (!showMountingHardware) return;
+        float depth = Mathf.Max(0.05f, mountDepth);
+        CreateHousingPart("Monitor Mount Plate", new Vector3(0f, 0f, 0.3f), new Vector3(0.42f, 0.46f, 0.035f), true, metalMaterial);
+        CreateHousingPart("Mount Arm", new Vector3(0f, 0f, 0.32f + depth * 0.5f), new Vector3(0.12f, 0.14f, depth), true, metalMaterial);
+        CreateHousingPart("Pillar Fixing Plate", new Vector3(0f, 0f, 0.34f + depth), new Vector3(0.32f, 0.52f, 0.04f), true, metalMaterial);
+        foreach (float x in new[] { -0.11f, 0.11f })
+            foreach (float y in new[] { -0.19f, 0.19f })
+                CreateHousingPart("Fixing Bolt", new Vector3(x, y, 0.313f + depth), new Vector3(0.035f, 0.035f, 0.018f), true, metalMaterial);
+        // Short cable routed along the rear bracket; the venue-side route depends on the pillar.
+        CreateHousingPart("Cable Drop", new Vector3(0.23f, -0.21f, 0.305f), new Vector3(0.018f, 0.3f, 0.018f));
+        CreateHousingPart("Cable To Mount", new Vector3(0.12f, -0.35f, 0.305f), new Vector3(0.23f, 0.018f, 0.018f));
+        CreateHousingPart("Cable Along Arm", new Vector3(0.014f, -0.35f, 0.32f + depth * 0.5f), new Vector3(0.018f, 0.018f, depth));
     }
 
-    private void CreateHousingPart(string partName, Vector3 position, Vector3 scale)
+    private void CreateHousingPart(string partName, Vector3 position, Vector3 scale, bool beveled = false, Material material = null)
     {
         GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cube);
         part.name = partName;
@@ -337,7 +370,38 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         partCollider.enabled = false;
         if (Application.isPlaying) Destroy(partCollider);
         else DestroyImmediate(partCollider);
-        if (housingMaterial != null) part.GetComponent<MeshRenderer>().sharedMaterial = housingMaterial;
+        if (beveled) part.GetComponent<MeshFilter>().sharedMesh = billboardHousing.GetComponent<VoiceBillboardGeometry>().GetBeveledBox();
+        Material finish = material != null ? material : (!beveled && detailMaterial != null ? detailMaterial : housingMaterial);
+        if (finish != null) part.GetComponent<MeshRenderer>().sharedMaterial = finish;
+    }
+
+    private void BuildScreenFrame()
+    {
+        Vector2 size = canvasRect.sizeDelta;
+        for (int side = 0; side < 4; side++)
+        {
+            bool horizontal = side < 2;
+            float sign = side % 2 == 0 ? -1f : 1f;
+            Vector2 position = horizontal ? new Vector2(0f, sign * (size.y * 0.5f - 5f))
+                : new Vector2(sign * (size.x * 0.5f - 5f), 0f);
+            // Two restrained bands approximate an illuminated edge without post-process bloom.
+            for (int band = 0; band < 2; band++)
+            {
+                Color color = frameLightColor;
+                color.a *= frameLightIntensity * (band == 0 ? 0.12f : 0.75f);
+                Image edge = CreateImage("Screen Edge Light", canvasRect, LitScreenColor(color));
+                edge.rectTransform.anchoredPosition = position;
+                float width = band == 0 ? 8f : 2f;
+                edge.rectTransform.sizeDelta = horizontal ? new Vector2(size.x - 10f, width) : new Vector2(width, size.y - 10f);
+            }
+        }
+    }
+
+    private Color LitScreenColor(Color value)
+    {
+        if (!useStageBillboard) return value;
+        float brightness = Mathf.Clamp(screenBrightness, 0.4f, 1f);
+        return new Color(value.r * brightness, value.g * brightness, value.b * brightness, value.a);
     }
 
     private void OnDrawGizmosSelected()
@@ -392,7 +456,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         TMP_Text text = textObject.GetComponent<TextMeshProUGUI>();
         text.text = value;
         text.fontSize = fontSize;
-        text.color = normalTextColor;
+        text.color = LitScreenColor(normalTextColor);
         text.textWrappingMode = TextWrappingModes.NoWrap;
         text.overflowMode = TextOverflowModes.Ellipsis;
         text.raycastTarget = false;
@@ -420,8 +484,8 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         for (int index = 0; index < itemList.Count; index++)
         {
             ItemVisual item = itemList[index];
-            startBackgroundColors[index] = item.background.color;
-            startTextColors[index] = item.label.color;
+            startBackgroundColors[index] = item.backgroundColor;
+            startTextColors[index] = item.textColor;
             startScales[index] = item.rectTransform.localScale;
         }
 
@@ -493,14 +557,16 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         }
     }
 
-    private static void ApplyVisual(
+    private void ApplyVisual(
         ItemVisual item,
         Color backgroundColor,
         Color textColor,
         Vector3 scale)
     {
-        item.background.color = backgroundColor;
-        item.label.color = textColor;
+        item.backgroundColor = backgroundColor;
+        item.textColor = textColor;
+        item.background.color = LitScreenColor(backgroundColor);
+        item.label.color = LitScreenColor(textColor);
         item.rectTransform.localScale = scale;
     }
 

@@ -1292,7 +1292,13 @@ MonoBehaviour:
   billboardAnchor: {fileID: 2099000001}
   housingMaterial: {fileID: 2100000, guid: a6f27e4d91bf4e3396fc642c32842b8a, type: 2}
   showVoicePointDebug: 0
-  supportHeight: 0.85
+  metalMaterial: {fileID: 2100000, guid: 459620bced624d518c46924558061ac9, type: 2}
+  detailMaterial: {fileID: 2100000, guid: adba7910a1c44d48aef4a4adbc1de938, type: 2}
+  mountDepth: 0.28
+  showMountingHardware: 1
+  screenBrightness: 0.9
+  frameLightColor: {r: 0.9, g: 0.25, b: 0.46, a: 1}
+  frameLightIntensity: 0.55
   distanceFromCamera: 2
   horizontalOffset: 0.75
   verticalOffset: -0.05
