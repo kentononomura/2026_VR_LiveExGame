@@ -135,6 +135,30 @@ inline half4 GetParticleColor(half4 color)
     return color;
 }
 
+// Preserve the original sequential blend, including its epsilon-clamped
+// startup/end-point behavior. Skip texture fetches only for EXACT zero weights.
+// The atlas contains five equal clips separated by 1/64-wide gaps.
+float3 SampleAudienceMotion(TEXTURE2D_PARAM(animationTexture, animationSampler),
+    float2 vertexUV, float phase, float baseWeight, float4 clipWeights)
+{
+    float3 result = 0.0;
+    float atlasScale = _PositionTexture_TexelSize.x * (_Framecount - 1.0);
+    float sampleWeights[5] = { baseWeight, clipWeights.x, clipWeights.y, clipWeights.z, clipWeights.w };
+    [unroll]
+    for (int clip = 0; clip < 5; ++clip)
+    {
+        float weight = sampleWeights[clip];
+        UNITY_BRANCH
+        if (weight > 0.0)
+        {
+            float frame = phase * 0.1875 + (float)clip * 0.203125;
+            float2 uv = vertexUV + float2(atlasScale * frame, 0.0);
+            result += SAMPLE_TEXTURE2D_LOD(animationTexture, animationSampler, uv, 0.0).rgb * weight;
+        }
+    }
+    return result;
+}
+
 Varyings vert(Attributes input)
 {
     Varyings output = (Varyings)0;
@@ -184,57 +208,31 @@ Varyings vert(Attributes input)
     float blend2 = saturate(weights.y / max(0.00001, 1.0 - weights.w - weights.z));
     float blend1 = saturate(weights.x / max(0.00001, 1.0 - weights.w - weights.z - weights.y));
 
+    // Expand the existing lerp chain into contribution weights. Keeping the
+    // original factors preserves rounding near transitions and the startup fade.
+    float4 clipWeights;
+    clipWeights.w = blend4;
+    clipWeights.z = blend3 * (1.0 - blend4);
+    clipWeights.y = blend2 * (1.0 - blend3) * (1.0 - blend4);
+    clipWeights.x = blend1 * (1.0 - blend2) * (1.0 - blend3) * (1.0 - blend4);
+    float baseWeight = (1.0 - blend1) * (1.0 - blend2) * (1.0 - blend3) * (1.0 - blend4);
+
     t = frac(t);
-    const float t0 = remap(t, 0.0, 1.0, 0.0, 0.1875);
-    const float t1 = remap(t, 0.0, 1.0, 0.203125, 0.390625);
-    const float t2 = remap(t, 0.0, 1.0, 0.40625, 0.59375);
-    const float t3 = remap(t, 0.0, 1.0, 0.609375, 0.796875);
-    const float t4 = remap(t, 0.0, 1.0, 0.8125, 1.0);
-
-    float4 positionOS = input.positionOS;
-    float4 normalOS = input.normalOS;
-
-    const float fameCount = _Framecount - 1.0;
-    const float2 offsetUV0 = float2((_PositionTexture_TexelSize.x * fameCount * t0), 0.0);
-    const float2 offsetUV1 = float2((_PositionTexture_TexelSize.x * fameCount * t1), 0.0);
-    const float2 offsetUV2 = float2((_PositionTexture_TexelSize.x * fameCount * t2), 0.0);
-    const float2 offsetUV3 = float2((_PositionTexture_TexelSize.x * fameCount * t3), 0.0);
-    const float2 offsetUV4 = float2((_PositionTexture_TexelSize.x * fameCount * t4), 0.0);
 #if defined(UNITY_PARTICLE_INSTANCING_ENABLED)
-    const float2 uv0 = (offsetUV0 + input.uv1.xy);
-    const float2 uv1 = (offsetUV1 + input.uv1.xy);
-    const float2 uv2 = (offsetUV2 + input.uv1.xy);
-    const float2 uv3 = (offsetUV3 + input.uv1.xy);
-    const float2 uv4 = (offsetUV4 + input.uv1.xy);
+    float2 vertexUV = input.uv1.xy;
 #else
-    const float2 uv0 = (offsetUV0 + input.uv0.zw);
-    const float2 uv1 = (offsetUV1 + input.uv0.zw);
-    const float2 uv2 = (offsetUV2 + input.uv0.zw);
-    const float2 uv3 = (offsetUV3 + input.uv0.zw);
-    const float2 uv4 = (offsetUV4 + input.uv0.zw);
+    float2 vertexUV = input.uv0.zw;
 #endif
+    float4 positionOS = input.positionOS;
+    positionOS.xyz += SampleAudienceMotion(TEXTURE2D_ARGS(_PositionTexture, sampler_PositionTexture),
+        vertexUV, t, baseWeight, clipWeights);
 
-    const float3 offsetPosition0 = SAMPLE_TEXTURE2D_LOD(_PositionTexture, sampler_PositionTexture, uv0, 0.0).rgb;
-    const float3 offsetPosition1 = SAMPLE_TEXTURE2D_LOD(_PositionTexture, sampler_PositionTexture, uv1, 0.0).rgb;
-    const float3 offsetPosition2 = SAMPLE_TEXTURE2D_LOD(_PositionTexture, sampler_PositionTexture, uv2, 0.0).rgb;
-    const float3 offsetPosition3 = SAMPLE_TEXTURE2D_LOD(_PositionTexture, sampler_PositionTexture, uv3, 0.0).rgb;
-    const float3 offsetPosition4 = SAMPLE_TEXTURE2D_LOD(_PositionTexture, sampler_PositionTexture, uv4, 0.0).rgb;
-    const float3 vertex01 = lerp(offsetPosition0, offsetPosition1, blend1);
-    const float3 vertex12 = lerp(vertex01, offsetPosition2, blend2);
-    const float3 vertex23 = lerp(vertex12, offsetPosition3, blend3);
-    const float3 vertex34 = lerp(vertex23, offsetPosition4, blend4);
-    positionOS.xyz += vertex34;
-
-    const float3 normal0 = SAMPLE_TEXTURE2D_LOD(_NormalTexture, sampler_PositionTexture, uv0, 0.0).rgb;
-    const float3 normal1 = SAMPLE_TEXTURE2D_LOD(_NormalTexture, sampler_PositionTexture, uv1, 0.0).rgb;
-    const float3 normal2 = SAMPLE_TEXTURE2D_LOD(_NormalTexture, sampler_PositionTexture, uv2, 0.0).rgb;
-    const float3 normal3 = SAMPLE_TEXTURE2D_LOD(_NormalTexture, sampler_PositionTexture, uv3, 0.0).rgb;
-    const float3 normal4 = SAMPLE_TEXTURE2D_LOD(_NormalTexture, sampler_PositionTexture, uv4, 0.0).rgb;
-    const float3 normal01 = lerp(normal0, normal1, blend1);
-    const float3 normal12 = lerp(normal01, normal2, blend2);
-    const float3 normal23 = lerp(normal12, normal3, blend3);
-    const float3 normal34 = lerp(normal23, normal4, blend4);
-    normalOS.xyz = normal34;
+#if defined(PARTICLE_MESH_AUDIENCE_URP_DEPTH_NORMALS_ONLY) || (defined(PARTICLE_MESH_AUDIENCE_URP_FORWARD) && defined(APPLY_MATCAP))
+    float4 normalOS = input.normalOS;
+    // Retain the atlas sampler used by the original shader for all three maps.
+    normalOS.xyz = SampleAudienceMotion(TEXTURE2D_ARGS(_NormalTexture, sampler_PositionTexture),
+        vertexUV, t, baseWeight, clipWeights);
+#endif
 
 // UniversalForwardパス
 #if defined(PARTICLE_MESH_AUDIENCE_URP_FORWARD)
@@ -257,17 +255,9 @@ Varyings vert(Attributes input)
     #endif
 // DpethNormalsOnlyパス
 #elif defined(PARTICLE_MESH_AUDIENCE_URP_DEPTH_NORMALS_ONLY)
-    const float3 tangent0 = SAMPLE_TEXTURE2D_LOD(_TangentTexture, sampler_PositionTexture, uv0, 0.0).rgb;
-    const float3 tangent1 = SAMPLE_TEXTURE2D_LOD(_TangentTexture, sampler_PositionTexture, uv1, 0.0).rgb;
-    const float3 tangent2 = SAMPLE_TEXTURE2D_LOD(_TangentTexture, sampler_PositionTexture, uv2, 0.0).rgb;
-    const float3 tangent3 = SAMPLE_TEXTURE2D_LOD(_TangentTexture, sampler_PositionTexture, uv3, 0.0).rgb;
-    const float3 tangent4 = SAMPLE_TEXTURE2D_LOD(_TangentTexture, sampler_PositionTexture, uv4, 0.0).rgb;
-    const float3 tangent01 = lerp(tangent0, tangent1, blend1);
-    const float3 tangent12 = lerp(tangent01, tangent2, blend2);
-    const float3 tangent23 = lerp(tangent12, tangent3, blend3);
-    const float3 tangent34 = lerp(tangent23, tangent4, blend4);
     float4 tangentOS = input.tangentOS;
-    tangentOS.xyz = tangent34;
+    tangentOS.xyz = SampleAudienceMotion(TEXTURE2D_ARGS(_TangentTexture, sampler_PositionTexture),
+        vertexUV, t, baseWeight, clipWeights);
 
     VertexPositionInputs vertexInput = GetVertexPositionInputs(positionOS.xyz);
     output.positionCS = vertexInput.positionCS;

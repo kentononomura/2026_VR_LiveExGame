@@ -78,7 +78,7 @@ public sealed class VoicePointEvaluator
         result = null;
         if (playerTransform == null || unityChanTransform == null)
         {
-            if (enableDebugLog)
+            if (Application.isEditor && enableDebugLog)
             {
                 Debug.LogWarning(
                     "[VoicePoint] PlayerまたはUnityちゃんのTransformを取得できないため、リアクションを実行しません。");
@@ -101,7 +101,7 @@ public sealed class VoicePointEvaluator
         result = new EvaluationResult(distance, basePoint, multiplier, safeHeartMultiplier,
             finalPoint, reactionThreshold, succeeded);
 
-        if (enableDebugLog)
+        if (Application.isEditor && enableDebugLog)
         {
             Debug.Log(
                 $"[VoicePoint] Distance: {distance:F2}m / Base: {basePoint:F1} / " +

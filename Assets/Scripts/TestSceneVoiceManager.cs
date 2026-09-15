@@ -621,7 +621,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             int position = Microphone.GetPosition(microphoneDevice);
             if (position >= 0) lastSamplePosition = position;
         }
-        if (showExperimentTimingLog)
+        if (Application.isEditor && showExperimentTimingLog)
             Debug.Log($"[VoiceExperiment] mode={inputMode} suspended={suspend} t={RecognitionClock:F3}s");
     }
 
@@ -630,7 +630,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         if (packet.generation != recognitionGeneration || continuousInputSuspended) return;
         try
         {
-            if (showExperimentTimingLog && packet.isFinal)
+            if (Application.isEditor && showExperimentTimingLog && packet.isFinal)
             {
                 string early = earlyExecutedAt > 0d
                     ? $" early-to-final={(RecognitionClock - earlyExecutedAt) * 1000d:F1}ms" : "";
@@ -1209,7 +1209,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             return;
         }
 
-        if (showRecognitionLog && isFinalResult)
+        if (Application.isEditor && showRecognitionLog && isFinalResult)
         {
             Debug.Log($"[Vosk TestScene 音声認識] {jsonResult}");
         }
@@ -1236,7 +1236,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             {
                 stablePartialCandidate = candidate;
                 earlyCandidateSince = submittedAt;
-                if (showExperimentTimingLog)
+                if (Application.isEditor && showExperimentTimingLog)
                     Debug.Log($"[VoiceExperiment] candidate={candidate.keyword} t={RecognitionClock:F3}s");
                 if (earlyCommandStableDuration > 0f) return;
             }
@@ -1285,7 +1285,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         hasHandledRecognitionThisPress = true;
         recognitionAcceptedAt = RecognitionClock;
         if (early) earlyExecutedAt = recognitionAcceptedAt;
-        if (showExperimentTimingLog)
+        if (Application.isEditor && showExperimentTimingLog)
             Debug.Log($"[VoiceExperiment] accepted mode={inputMode} source={(early ? "partial" : "final")}" +
                 $" command={matchedReaction.keyword} t={recognitionAcceptedAt:F3}s" +
                 $" submit-to-accept={(recognitionAcceptedAt - submittedAt) * 1000d:F1}ms");
@@ -1299,7 +1299,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         // ポイントは保持・蓄積しない。
         if (!EvaluateCurrentVoicePoint())
         {
-            if (showExperimentTimingLog) Debug.Log("[VoiceExperiment] reaction=point-rejected");
+            if (Application.isEditor && showExperimentTimingLog) Debug.Log("[VoiceExperiment] reaction=point-rejected");
             return;
         }
 
@@ -1393,7 +1393,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             }
         }
 
-        if (showExperimentTimingLog)
+        if (Application.isEditor && showExperimentTimingLog)
             Debug.Log($"[VoiceExperiment] reaction={(reactionStarted ? "requested" : "no-target")}" +
                 $" command={kr.keyword} t={RecognitionClock:F3}s" +
                 $" accept-to-request={(RecognitionClock - recognitionAcceptedAt) * 1000d:F1}ms");

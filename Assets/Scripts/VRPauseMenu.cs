@@ -597,14 +597,9 @@ public class VRPauseMenu : MonoBehaviour
         {
             titleBtn.onClick.AddListener(() =>
             {
-                if (SceneManager.GetActiveScene().name == ResultSceneName)
-                {
-                    // Preserve the behavior of the replaced TitleReturnCanvas button.
-                    PhotoGalleryManager.ClearPhotos();
-                }
-
                 ResumeGame();
-                VRScreenFader.Instance.LoadSceneWithFade("TitleScene", 1.0f);
+                VRScreenFader.Instance.LoadSceneWithFade(
+                    TitleSceneName, 1.0f, PhotoGalleryManager.ClearPhotos);
             });
         }
 

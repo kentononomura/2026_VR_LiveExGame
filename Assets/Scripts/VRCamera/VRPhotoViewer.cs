@@ -342,25 +342,28 @@ public class VRPhotoViewer : MonoBehaviour, ISceneLoadReady
             scoreReachedClip);
         scoreCountUpUI.ConfigureHighlightColor(scoreHighlightColor);
 
-        // Add Details Text (Score Breakdown)
-        GameObject detailsObj = new GameObject("DetailsText");
-        detailsObj.transform.SetParent(canvasObj.transform, false);
-        vrDetailsText = detailsObj.AddComponent<UnityEngine.UI.Text>();
-        vrDetailsText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        vrDetailsText.fontSize = detailsFontSize;
-        vrDetailsText.alignment = TextAnchor.UpperLeft;
-        vrDetailsText.color = Color.white;
-        
-        UnityEngine.UI.Outline out3 = detailsObj.AddComponent<UnityEngine.UI.Outline>();
-        out3.effectColor = Color.black;
-        out3.effectDistance = new Vector2(2, -2);
-        
-        RectTransform detailsRt = detailsObj.GetComponent<RectTransform>();
-        detailsRt.anchorMin = new Vector2(0, 1); // Top Left anchor
-        detailsRt.anchorMax = new Vector2(0, 1);
-        detailsRt.pivot = new Vector2(0, 1);     // Top Left pivot
-        detailsRt.anchoredPosition = detailsTextPosition; // Use Inspector value
-        detailsRt.sizeDelta = detailsTextSize; // Use Inspector value
+        if (Application.isEditor)
+        {
+            // Score breakdown is for checking the evaluation in the Editor only.
+            GameObject detailsObj = new GameObject("DetailsText");
+            detailsObj.transform.SetParent(canvasObj.transform, false);
+            vrDetailsText = detailsObj.AddComponent<UnityEngine.UI.Text>();
+            vrDetailsText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            vrDetailsText.fontSize = detailsFontSize;
+            vrDetailsText.alignment = TextAnchor.UpperLeft;
+            vrDetailsText.color = Color.white;
+
+            UnityEngine.UI.Outline out3 = detailsObj.AddComponent<UnityEngine.UI.Outline>();
+            out3.effectColor = Color.black;
+            out3.effectDistance = new Vector2(2, -2);
+
+            RectTransform detailsRt = detailsObj.GetComponent<RectTransform>();
+            detailsRt.anchorMin = new Vector2(0, 1); // Top Left anchor
+            detailsRt.anchorMax = new Vector2(0, 1);
+            detailsRt.pivot = new Vector2(0, 1);     // Top Left pivot
+            detailsRt.anchoredPosition = detailsTextPosition; // Use Inspector value
+            detailsRt.sizeDelta = detailsTextSize; // Use Inspector value
+        }
 
         scoreCanvas.gameObject.SetActive(false);
     }
@@ -543,10 +546,13 @@ public class VRPhotoViewer : MonoBehaviour, ISceneLoadReady
                     scoreCountUpUI.PlayCountUp(displayedLikeCount);
                 }
                 
-                // Set the breakdown text
-                vrDetailsText.text = FormatScoreDetail(centerDetailFormat, p.CenterBonus, "Center") + "\n" +
-                                     FormatScoreDetail(gazeDetailFormat, p.GazeBonus, "Gaze") + "\n" +
-                                     FormatScoreDetail(poseDetailFormat, p.PoseBonus, "Pose");
+                if (Application.isEditor)
+                {
+                    // Set the Editor-only breakdown text.
+                    vrDetailsText.text = FormatScoreDetail(centerDetailFormat, p.CenterBonus, "Center") + "\n" +
+                                         FormatScoreDetail(gazeDetailFormat, p.GazeBonus, "Gaze") + "\n" +
+                                         FormatScoreDetail(poseDetailFormat, p.PoseBonus, "Pose");
+                }
             }
             else if (scoreCanvas != null)
             {

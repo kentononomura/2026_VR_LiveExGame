@@ -523,7 +523,7 @@ public class TitleVoiceManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(jsonResult)) return;
 
-        if (showRecognitionLog && jsonResult.Contains("\"text\""))
+        if (Application.isEditor && showRecognitionLog && jsonResult.Contains("\"text\""))
         {
             Debug.Log($"[Vosk タイトル音声認識結果] {jsonResult}");
         }

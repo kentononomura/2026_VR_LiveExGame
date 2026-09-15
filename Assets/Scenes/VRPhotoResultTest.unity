@@ -156,8 +156,8 @@ MonoBehaviour:
   photoBackgroundColor: {r: 0, g: 0, b: 0, a: 1}
   flipUIText: 0
   scoreTextPosition: {x: 0, y: 200}
-  scoreRowSize: {x: 1000, y: 200}
-  scoreNumberAreaSize: {x: 320, y: 200}
+  scoreRowSize: {x: 1200, y: 200}
+  scoreNumberAreaSize: {x: 400, y: 200}
   rankTextPosition: {x: -380, y: 357}
   detailsTextPosition: {x: -169, y: 428}
   detailsTextSize: {x: 500, y: 300}

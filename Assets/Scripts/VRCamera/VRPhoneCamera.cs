@@ -74,6 +74,9 @@ public class VRPhoneCamera : MonoBehaviour
 
         if (viewfinderCamera != null)
         {
+            // 画面と保存写真に共通の映像から、飛行ハートだけを除外する。
+            viewfinderCamera.cullingMask &=
+                ~LayerMask.GetMask(PenlightHeartFeature.FlyingHeartLayerName);
             defaultFOV = viewfinderCamera.fieldOfView;
             if (viewfinderTexture != null && viewfinderTexture.height > 0)
             {

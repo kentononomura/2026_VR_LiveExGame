@@ -6,6 +6,8 @@ using UnityEngine;
 /// </summary>
 public sealed class PenlightHeartFeature : MonoBehaviour
 {
+    public const string FlyingHeartLayerName = "PenlightHeart";
+
     private const string HeartSpriteResourcePath = "VoiceFeedback/heart-particle";
     private const string SparkleTextureResourcePath = "VoiceFeedback/sparkle-particle";
     private const string ParticleMaterialResourcePath = "VoiceFeedback/particle-material";
@@ -457,6 +459,8 @@ public sealed class PenlightHeartFeature : MonoBehaviour
     private FlyingHeart CreateFlyingHeart(int index)
     {
         GameObject heartObject = new GameObject($"Flying Penlight Heart {index + 1}");
+        int heartLayer = LayerMask.NameToLayer(FlyingHeartLayerName);
+        if (heartLayer >= 0) heartObject.layer = heartLayer;
         heartObject.transform.SetParent(visualRoot.transform, false);
         SpriteRenderer renderer = heartObject.AddComponent<SpriteRenderer>();
         renderer.sprite = heartSprite;

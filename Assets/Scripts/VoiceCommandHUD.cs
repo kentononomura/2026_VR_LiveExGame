@@ -214,7 +214,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
     {
         foreach (VoiceCommandHUD replica in replicas)
             if (replica != null) replica.ShowVoicePoint(result);
-        if (!showVoicePointDebug) return;
+        if (!(Application.isEditor && showVoicePointDebug)) return;
         if (voicePointText == null) BuildHUD();
         if (voicePointText == null) return;
         if (!result.HasValue)
@@ -250,7 +250,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
 
         canvasRect = canvasObject.GetComponent<RectTransform>();
         float commandAreaHeight = Mathf.Max(430f, 134f + (commands?.Count ?? 0) * 74f);
-        canvasRect.sizeDelta = new Vector2(560f, commandAreaHeight + (showVoicePointDebug ? 150f : 0f));
+        canvasRect.sizeDelta = new Vector2(560f, commandAreaHeight + (Application.isEditor && showVoicePointDebug ? 150f : 0f));
         canvasRect.localScale = Vector3.one * worldScale;
 
         if (useStageBillboard) BuildHousing(displayParent, canvasRect.sizeDelta * worldScale);
@@ -285,7 +285,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         headingText.alignment = TextAlignmentOptions.Center;
         headingText.fontStyle = FontStyles.Bold;
 
-        if (showVoicePointDebug)
+        if (Application.isEditor && showVoicePointDebug)
         {
             voicePointText = CreateText("Voice Point Debug", canvasRect,
                 "直近の音声ポイント: --\n声かけを認識すると表示します", 26f);
@@ -438,7 +438,7 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         Gizmos.matrix = anchor.localToWorldMatrix;
         Gizmos.color = Color.cyan;
         float height = Mathf.Max(430f, 134f + (commands?.Count ?? 0) * 74f)
-            + (showVoicePointDebug ? 150f : 0f);
+            + (Application.isEditor && showVoicePointDebug ? 150f : 0f);
         Gizmos.DrawWireCube(Vector3.zero, new Vector3(560f * worldScale, height * worldScale, 0.02f));
         Gizmos.DrawLine(Vector3.zero, Vector3.back * 0.5f);
         Gizmos.matrix = previous;
@@ -591,6 +591,10 @@ public sealed class VoiceCommandHUD : MonoBehaviour
         Color textColor,
         Vector3 scale)
     {
+        // Scene teardown may destroy the generated UI before OnDisable runs.
+        if (item == null || item.background == null || item.label == null || item.rectTransform == null)
+            return;
+
         item.backgroundColor = backgroundColor;
         item.textColor = textColor;
         item.background.color = LitScreenColor(backgroundColor);
