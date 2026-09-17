@@ -749,7 +749,7 @@ MonoBehaviour:
   - "\u30E6\u30CB\u30C6\u30A3\u3061\u3083\u3093"
   - "\u30E6\u30CB\u30C6\u30A3 \u3061\u3083\u3093"
   - '[unk]'
-  inputMode: 0
+  inputMode: 1
   earlyCommandStableDuration: 0.15
   showExperimentTimingLog: 1
   pushToTalkAction:

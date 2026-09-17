@@ -296,6 +296,8 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     private VoiceRecognitionInputMode appliedInputMode = (VoiceRecognitionInputMode)(-1);
     private bool continuousInputSuspended;
     private int recognitionGeneration;
+    private int pushToTalkPressId;
+    private int lastResultPressId = -1;
     private double earlyCandidateSince;
     private double recognitionAcceptedAt;
     private double earlyExecutedAt;
@@ -324,6 +326,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         public byte[] audioData;
         public int audioLength;
         public int generation;
+        public int pressId;
         public bool includePartial;
         public double submittedAt;
     }
@@ -332,6 +335,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     {
         public string json;
         public int generation;
+        public int pressId;
         public bool isFinal;
         public double submittedAt;
         public double producedAt;
@@ -589,6 +593,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         {
             json = json,
             generation = command.generation,
+            pressId = command.pressId,
             isFinal = isFinal,
             submittedAt = command.submittedAt,
             producedAt = RecognitionClock
@@ -603,6 +608,8 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         appliedInputMode = inputMode;
         continuousInputSuspended = suspend;
         recognitionGeneration++;
+        pushToTalkPressId = 0;
+        lastResultPressId = -1;
         // The worker may already be processing an old command. Generation tags also
         // reject its eventual result after this reset, without touching Vosk off-thread.
         while (commandQueue.TryDequeue(out VoskCommand pending))
@@ -628,6 +635,14 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     private void ProcessRecognitionPacket(RecognitionPacket packet)
     {
         if (packet.generation != recognitionGeneration || continuousInputSuspended) return;
+        // The single worker returns packets in submission order. Reset the one-command
+        // latch when results move to the next press, not when the physical button moves.
+        // This preserves a pending prior result without letting it consume the new press.
+        if (!IsContinuous && packet.pressId != lastResultPressId)
+        {
+            ResetRecognitionMatchState();
+            lastResultPressId = packet.pressId;
+        }
         try
         {
             if (Application.isEditor && showExperimentTimingLog && packet.isFinal)
@@ -699,11 +714,13 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         {
             if (!isLeftTriggerDown)
             {
+                // Finish the preceding press before Reset can discard its utterance.
+                if (isPostRollActive) FinalizePendingPushToTalk();
+                pushToTalkPressId++;
                 isLeftTriggerDown = true;
                 isPostRollActive = false;
                 postRollSamplesRemaining = 0;
                 shouldSendPreRoll = true;
-                ResetRecognitionMatchState();
                 if (isListening && recognizer != null)
                 {
                     commandQueue.Enqueue(new VoskCommand { type = VoskCommandType.Reset });
@@ -796,14 +813,53 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 
         if (shouldFinalize)
         {
-            commandQueue.Enqueue(new VoskCommand
-            {
-                type = VoskCommandType.FinalResult,
-                generation = recognitionGeneration,
-                submittedAt = RecognitionClock
-            });
+            EnqueuePushToTalkFinalResult();
             Debug.Log($"<color=#FF8800>[Vosk] 🛑 音声入力の受付を終了しました</color>");
         }
+    }
+
+    private void FinalizePendingPushToTalk()
+    {
+        // Include the microphone tail already recorded since the last frame. A rapid
+        // repress ends the old tail here; audio after this boundary belongs to the new press.
+        if (isListening && recognizer != null && audioClip != null)
+        {
+            int position = Microphone.GetPosition(microphoneDevice);
+            if (position >= 0 && position != lastSamplePosition)
+            {
+                int count = position - lastSamplePosition;
+                if (count < 0) count += audioClip.samples;
+                float[] samples = ArrayPool<float>.Shared.Rent(count);
+                try
+                {
+                    var chunk = new System.Span<float>(samples, 0, count);
+                    audioClip.GetData(chunk, lastSamplePosition);
+                    lastSamplePosition = position;
+                    if (shouldSendPreRoll)
+                    {
+                        EnqueuePreRollAudio();
+                        shouldSendPreRoll = false;
+                    }
+                    EnqueueAudioSamples(chunk);
+                }
+                finally
+                {
+                    ArrayPool<float>.Shared.Return(samples);
+                }
+            }
+        }
+        EnqueuePushToTalkFinalResult();
+    }
+
+    private void EnqueuePushToTalkFinalResult()
+    {
+        commandQueue.Enqueue(new VoskCommand
+        {
+            type = VoskCommandType.FinalResult,
+            generation = recognitionGeneration,
+            pressId = pushToTalkPressId,
+            submittedAt = RecognitionClock
+        });
     }
 
     private string BuildRecognitionGrammarJson()
@@ -909,6 +965,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             audioData = byteData,
             audioLength = byteCount,
             generation = recognitionGeneration,
+            pressId = pushToTalkPressId,
             includePartial = inputMode == VoiceRecognitionInputMode.ContinuousEarlyCommand,
             submittedAt = RecognitionClock
         });
@@ -1445,6 +1502,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         KeywordReaction bestReaction = null;
         bestSimilarity = 0f;
         float secondBestSimilarity = 0f;
+        var scoredReactions = new List<KeyValuePair<KeywordReaction, float>>();
 
         foreach (KeywordReaction reaction in keywordReactions)
         {
@@ -1452,15 +1510,33 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             if (keyword.Length < fuzzyMinimumCharacters) continue;
 
             float similarity = CalculateBestSubstringSimilarity(normalizedText, keyword);
+            scoredReactions.Add(new KeyValuePair<KeywordReaction, float>(reaction, similarity));
             if (similarity > bestSimilarity)
             {
-                secondBestSimilarity = bestSimilarity;
                 bestSimilarity = similarity;
                 bestReaction = reaction;
             }
-            else if (similarity > secondBestSimilarity)
+        }
+
+        // 1位と同じコマンドの別表記は、競合する候補として数えない。
+        // 全体の最高点と、それとは異なるコマンドの最高点を比較する。
+        // commandIdが未設定の項目どうしは、誤って同じコマンドにまとめない。
+        if (bestReaction != null)
+        {
+            foreach (KeyValuePair<KeywordReaction, float> candidate in scoredReactions)
             {
-                secondBestSimilarity = similarity;
+                if (candidate.Key == bestReaction ||
+                    (!string.IsNullOrWhiteSpace(bestReaction.commandId) &&
+                     string.Equals(candidate.Key.commandId, bestReaction.commandId,
+                         System.StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                if (candidate.Value > secondBestSimilarity)
+                {
+                    secondBestSimilarity = candidate.Value;
+                }
             }
         }
 
