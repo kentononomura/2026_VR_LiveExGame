@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 [InitializeOnLoad]
 public sealed class TestSceneLayoutWindow : EditorWindow
 {
-    private const string PreviewName = "TestScene Layout Preview (not saved)";
+    private const string PreviewName = "VR_GameScene Layout Preview (not saved)";
     private const string AudienceName = "Audience Layout";
     private const string AudiencePrefabPath = "Assets/ShirayuriMeshibe/Scenes/ParticleAudience/URP/Models/AudienceB/Prefabs/ParticleSystem(AudienceB(LOD0)) use MeshEmitter.prefab";
     private static GameObject previewRoot;
@@ -38,17 +38,17 @@ public sealed class TestSceneLayoutWindow : EditorWindow
         };
     }
 
-    [MenuItem("Tools/TestScene/観客配置・ステージプレビュー")]
+    [MenuItem("Tools/VR_GameScene/観客配置・ステージプレビュー")]
     public static void Open()
     {
-        GetWindow<TestSceneLayoutWindow>("TestScene 配置");
+        GetWindow<TestSceneLayoutWindow>("VR_GameScene 配置");
     }
 
     private void OnGUI()
     {
         scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
         EditorGUILayout.HelpBox(
-            "TestSceneを開き、ステージプレビューを表示してください。ステージ・Unityちゃんの初期位置と応援掲示板を表示します。", MessageType.Info);
+            "VR_GameSceneを開き、ステージプレビューを表示してください。ステージ・Unityちゃんの初期位置と応援掲示板を表示します。", MessageType.Info);
         using (new EditorGUI.DisabledScope(EditorApplication.isPlayingOrWillChangePlaymode))
         {
             if (GUILayout.Button("1. ステージプレビューを表示・更新")) ShowPreview();
@@ -99,9 +99,9 @@ public sealed class TestSceneLayoutWindow : EditorWindow
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode) return null;
         Scene scene = SceneManager.GetActiveScene();
-        if (scene.path != "Assets/Scenes/TestScene.unity")
+        if (scene.path != "Assets/Scenes/VR_GameScene.unity")
         {
-            Debug.LogWarning("TestSceneを開いてから配置ツールを使用してください。");
+            Debug.LogWarning("VR_GameSceneを開いてから配置ツールを使用してください。");
             return null;
         }
         foreach (GameObject root in scene.GetRootGameObjects())
@@ -109,7 +109,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
             StageDirector director = root.GetComponentInChildren<StageDirector>(true);
             if (director != null) return director;
         }
-        Debug.LogWarning("TestScene内にStageDirectorが見つかりません。");
+        Debug.LogWarning("VR_GameScene内にStageDirectorが見つかりません。");
         return null;
     }
 
@@ -176,7 +176,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
     private static void DrawBillboardSelection()
     {
         Scene scene = SceneManager.GetActiveScene();
-        if (scene.path != "Assets/Scenes/TestScene.unity") return;
+        if (scene.path != "Assets/Scenes/VR_GameScene.unity") return;
         EditorGUILayout.LabelField("保存対象のモニター", EditorStyles.boldLabel);
         VoiceCommandHUD hud = FindBillboard(scene);
         if (hud != null && GUILayout.Button(hud.BillboardAnchor.name))
@@ -238,7 +238,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
         if (director == null) return;
         // Only the persistent anchor is saved; preview geometry carries DontSave flags.
         if (EditorSceneManager.SaveScene(director.gameObject.scene))
-            Debug.Log("TestSceneの配置を保存しました。掲示板の位置・回転は再生時にも使用されます。");
+            Debug.Log("VR_GameSceneの配置を保存しました。掲示板の位置・回転は再生時にも使用されます。");
     }
 
     private static void AddVisuals(GameObject[] prefabs, float scale)
@@ -324,7 +324,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
         }
         Undo.IncrementCurrentGroup();
         int undoGroup = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("Add TestScene audience layout");
+        Undo.SetCurrentGroupName("Add VR_GameScene audience layout");
         var layout = new GameObject(AudienceName);
         SceneManager.MoveGameObjectToScene(layout, scene);
         // Starting point only; use the Scene handles to choose the seating area.
@@ -394,7 +394,7 @@ public sealed class TestSceneLayoutWindow : EditorWindow
         // Never modify a vendor emitter mesh. Reuse only this tool's generated asset.
         if (!path.StartsWith(folder + "/", System.StringComparison.Ordinal))
         {
-            mesh = new Mesh { name = "TestScene Audience Circle" };
+            mesh = new Mesh { name = "VR_GameScene Audience Circle" };
             AssetDatabase.CreateAsset(mesh, AssetDatabase.GenerateUniqueAssetPath(folder + "/AudienceCircle.asset"));
         }
         else Undo.RegisterCompleteObjectUndo(mesh, "Update circular audience mesh");

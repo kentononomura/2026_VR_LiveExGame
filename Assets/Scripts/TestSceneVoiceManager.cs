@@ -377,7 +377,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             }
         }
 
-        // TestSceneでは右手にスマホカメラを持つため、右手のペンライト（Saber）を非表示にする
+        // VR_GameSceneでは右手にスマホカメラを持つため、右手のペンライト（Saber）を非表示にする
         StartCoroutine(HideRightSaberRoutine());
 
 #if ENABLE_INPUT_SYSTEM
@@ -403,13 +403,13 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         {
             initializationFailed = true;
             initializationStatus = "音声モデルファイルの準備失敗";
-            Debug.LogError($"[Vosk] TestScene 用モデルを準備できませんでした: {modelPrepareError}");
+            Debug.LogError($"[Vosk] VR_GameScene 用モデルを準備できませんでした: {modelPrepareError}");
             yield break;
         }
 
         string recognitionGrammar = BuildRecognitionGrammarJson();
         initializationStatus = "音声認識器を初期化中";
-        Debug.Log($"[Vosk] TestScene 用のモデルロード非同期タスクを起動します: {modelPath}");
+        Debug.Log($"[Vosk] VR_GameScene 用のモデルロード非同期タスクを起動します: {modelPath}");
         Task.Run(() =>
         {
             try
@@ -437,7 +437,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                 isModelLoaded = true;
                 initializationStatus = "マイクを起動中";
                 string mode = string.IsNullOrEmpty(recognitionGrammar) ? "一般日本語" : "コマンド文法制限";
-                Debug.Log($"[Vosk] TestScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。認識モード: {mode}");
+                Debug.Log($"[Vosk] VR_GameScene 用のモデルロードおよび音声認識スレッドが正常に起動しました。認識モード: {mode}");
             }
             catch (System.Exception ex)
             {
@@ -570,7 +570,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             string selectedName = string.IsNullOrEmpty(microphoneDevice)
                 ? "Quest/Android システム既定マイク"
                 : microphoneDevice;
-            Debug.Log($"[Vosk] TestScene 音声認識マイクを開始しました: {selectedName}");
+            Debug.Log($"[Vosk] VR_GameScene 音声認識マイクを開始しました: {selectedName}");
         }
         else
         {
@@ -1175,7 +1175,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
         }
 
         // Prefabの従来IKLookAtは眼球Weightが0固定で、
-        // ここで追加する眼球専用IKとSetLookAtWeightが競合するためTestScene内だけ無効化する。
+        // ここで追加する眼球専用IKとSetLookAtWeightが競合するためVR_GameScene内だけ無効化する。
         UnityChan.IKLookAt legacyLookAt =
             unityChanObj != null
                 ? unityChanObj.GetComponentInChildren<UnityChan.IKLookAt>(true)
@@ -1268,7 +1268,7 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
 
         if (Application.isEditor && showRecognitionLog && isFinalResult)
         {
-            Debug.Log($"[Vosk TestScene 音声認識] {jsonResult}");
+            Debug.Log($"[Vosk VR_GameScene 音声認識] {jsonResult}");
         }
 
         string normalizedText = NormalizeRecognitionText(recognizedText);

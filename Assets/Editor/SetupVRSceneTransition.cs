@@ -18,8 +18,8 @@ public class SetupVRSceneTransition : Editor
 
     private static void SetupTestScene()
     {
-        // 1. Open TestScene
-        string scenePath = "Assets/Scenes/TestScene.unity";
+        // 1. Open VR_GameScene
+        string scenePath = "Assets/Scenes/VR_GameScene.unity";
         var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
 
         // 2. Find "App Config"
@@ -42,13 +42,13 @@ public class SetupVRSceneTransition : Editor
         }
 
         EditorSceneManager.SaveScene(scene);
-        Debug.Log("TestScene configured successfully.");
+        Debug.Log("VR_GameScene configured successfully.");
     }
 
     private static void SetupResultScene()
     {
-        // 1. Open VRPhotoResultTest scene
-        string scenePath = "Assets/Scenes/VRPhotoResultTest.unity";
+        // 1. Open VR_PhotoResultScene scene
+        string scenePath = "Assets/Scenes/VR_PhotoResultScene.unity";
         var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
 
         // 2. Destroy the existing XROriginVR first to ensure we start clean and don't keep a broken instance
@@ -88,7 +88,7 @@ public class SetupVRSceneTransition : Editor
             if (phoneCamera != null)
             {
                 phoneCamera.gameObject.SetActive(false);
-                Debug.Log("Deactivated VRPhoneCamera in VRPhotoResultTest.");
+                Debug.Log("Deactivated VRPhoneCamera in VR_PhotoResultScene.");
             }
         }
         else
@@ -125,9 +125,9 @@ public class SetupVRSceneTransition : Editor
         }
 
         EditorSceneManager.SaveScene(scene);
-        Debug.Log("VRPhotoResultTest configured successfully with fresh XR Origin.");
+        Debug.Log("VR_PhotoResultScene configured successfully with fresh XR Origin.");
 
-        // Reload TestScene so the editor returns to the starting scene
-        EditorSceneManager.OpenScene("Assets/Scenes/TestScene.unity", OpenSceneMode.Single);
+        // Reload VR_GameScene so the editor returns to the starting scene
+        EditorSceneManager.OpenScene("Assets/Scenes/VR_GameScene.unity", OpenSceneMode.Single);
     }
 }

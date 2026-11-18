@@ -2467,7 +2467,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5194ade9743a0084a90dcf3b56b57e66, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneTransitionManager
-  resultSceneName: VRPhotoResultTest
+  resultSceneName: VR_PhotoResultScene
   playSceneName: VRPhotoCameraTest
 --- !u!4 &1171873388
 Transform:

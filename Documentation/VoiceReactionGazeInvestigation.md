@@ -31,14 +31,14 @@ HMD位置からプレイヤー方向を求める実装は存在する。ただ�
 
 ## 確認方法と範囲
 
-- `TestSceneVoiceManager.cs`、`TestScene.unity`、`unitychan_hw.prefab`、`XROriginVR.prefab`、StageDirector、および同梱Animation RiggingのMultiAim実装を確認。
+- `TestSceneVoiceManager.cs`、`VR_GameScene.unity`、`unitychan_hw.prefab`、`XROriginVR.prefab`、StageDirector、および同梱Animation RiggingのMultiAim実装を確認。
 - Unity 6000.5.1f1の一時プロジェクトで、実際のUnityちゃんPrefabとAvatarを読み込み、ボーン軸を測定。
 - 現在の `StabilizedAimTargetFollower` をコピーして実行し、仮想HMDの位置に対するAim方向を測定。
 - 実行中のVRセッションのHMD参照・姿勢は直接取得していない。以下の実測はPrefab初期姿勢および分離した方向計算についての結果である。
 
 ## プレイヤー方向の取得
 
-`SetupAnimationRigging` は `FindAnyObjectByType<XROrigin>()` の `Camera` を優先し、取得できなければ `Camera.main` を使用する。TestSceneの参照先XRリグにはMain Cameraが設定されている。StageDirectorはキャラクター生成に先立ってXRリグを用意するため、通常の生成順序ではカメラが先に存在する。
+`SetupAnimationRigging` は `FindAnyObjectByType<XROrigin>()` の `Camera` を優先し、取得できなければ `Camera.main` を使用する。VR_GameSceneの参照先XRリグにはMain Cameraが設定されている。StageDirectorはキャラクター生成に先立ってXRリグを用意するため、通常の生成順序ではカメラが先に存在する。
 
 毎フレーム `HMD位置 - キャラクタールート上の基準点` から方向を計算している。カメラが向いている方角ではなく、プレイヤーがいる位置を使う点は適切。
 

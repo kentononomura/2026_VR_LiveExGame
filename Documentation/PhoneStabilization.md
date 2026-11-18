@@ -1,6 +1,6 @@
 # スマホカメラの手振れ補正
 
-TestSceneが生成する `Assets/VRCameraAssets/XROriginVR.prefab` の
+VR_GameSceneが生成する `Assets/VRCameraAssets/XROriginVR.prefab` の
 `Right Hand Controller/VRPhoneCamera` に `VRPhoneStabilizer` を追加。
 共通Prefabを使用する他シーンのスマホにも適用される。
 

@@ -15,8 +15,8 @@ public class VRPauseMenu : MonoBehaviour
     private bool isPersistentSettingsMenu = false;
     private float previousTimeScale = 1f;
 
-    private const string TestSceneName = "TestScene";
-    private const string ResultSceneName = "VRPhotoResultTest";
+    private const string TestSceneName = "VR_GameScene";
+    private const string ResultSceneName = "VR_PhotoResultScene";
     private const string TitleSceneName = "TitleScene";
     private const string ResultMenuAnchorName = "TitleReturnCanvas";
 
@@ -274,7 +274,7 @@ public class VRPauseMenu : MonoBehaviour
 #if ENABLE_INPUT_SYSTEM
     private void OnPauseActionPerformed(InputAction.CallbackContext context)
     {
-        // Only allow pausing in TestScene and ResultScene (VRPhotoResultTest)
+        // Only allow pausing in VR_GameScene and ResultScene (VR_PhotoResultScene)
         string currentScene = SceneManager.GetActiveScene().name;
         if (currentScene != TestSceneName && currentScene != ResultSceneName)
         {
@@ -412,9 +412,9 @@ public class VRPauseMenu : MonoBehaviour
             {
                 if (kvp.Key != null)
                 {
-                    if (currentScene == "TestScene")
+                    if (currentScene == "VR_GameScene")
                     {
-                        // In TestScene, completely disable the ray components, leaving the hand GameObject active
+                        // In VR_GameScene, completely disable the ray components, leaving the hand GameObject active
                         kvp.Key.enabled = false;
                         var lineVisual = kvp.Key.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals.XRInteractorLineVisual>();
                         if (lineVisual != null) lineVisual.enabled = false;

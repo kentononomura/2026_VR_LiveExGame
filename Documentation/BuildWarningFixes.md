@@ -23,4 +23,4 @@
 APKの再ビルドとQuestでの入力確認は未実施。
 
 Unityの入力バックエンド設定反映にはEditor再起動が必要になる。シーンを保存して再起動後、ConsoleをClearしてからビルドし、新しく出た警告を確認する。
-TitleSceneで左右トリガー、TestSceneで左トリガー、PCではEnter/Spaceなどのデバッグキーを確認する。既存ログの警告は修正後も履歴として残る。
+TitleSceneで左右トリガー、VR_GameSceneで左トリガー、PCではEnter/Spaceなどのデバッグキーを確認する。既存ログの警告は修正後も履歴として残る。

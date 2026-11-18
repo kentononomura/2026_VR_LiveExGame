@@ -8,7 +8,7 @@ public class TitleStartCube : MonoBehaviour
     private TitleVoiceManager voiceManager;
 
     [Tooltip("VoiceManagerが無い場合の遷移先シーン")]
-    public string targetSceneName = "TestScene";
+    public string targetSceneName = "VR_GameScene";
 
     void Start()
     {

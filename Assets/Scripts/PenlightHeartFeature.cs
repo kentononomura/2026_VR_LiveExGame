@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// TestScene専用のペンライト応援演出と、ハート到達後の一回限りの倍率を管理します。
+/// VR_GameScene専用のペンライト応援演出と、ハート到達後の一回限りの倍率を管理します。
 /// </summary>
 public sealed class PenlightHeartFeature : MonoBehaviour
 {

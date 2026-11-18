@@ -624,7 +624,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7d4b1eda6db32b4a8e0947b39c60e43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleVoiceManager
-  targetSceneName: TestScene
+  targetSceneName: VR_GameScene
   modelFolderName: vosk-model-small-ja-0.22
   customMicrophoneName: 
   showRecognitionLog: 1
@@ -1789,7 +1789,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1a1fe10f17c563b40bca21007248ce0c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleStartCube
-  targetSceneName: TestScene
+  targetSceneName: VR_GameScene
 --- !u!65 &1972324230
 BoxCollider:
   m_ObjectHideFlags: 0

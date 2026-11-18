@@ -373,7 +373,7 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
         GameObject phone = Instantiate(sourcePhone.gameObject, targetParent, false);
         phone.name = sourcePhone.gameObject.name;
         phone.SetActive(true);
-        Debug.Log("[StageDirector] TestScene用の右手スマホカメラだけを永続XRリグへ追加しました。");
+        Debug.Log("[StageDirector] VR_GameScene用の右手スマホカメラだけを永続XRリグへ追加しました。");
     }
 
     private static string GetRelativeTransformPath(Transform root, Transform target)
@@ -677,6 +677,6 @@ public class StageDirector : MonoBehaviour, ISceneLoadReady
 
     public void EndPerformance()
     {
-        VRScreenFader.Instance.LoadSceneWithFade("VRPhotoResultTest", 1.0f);
+        VRScreenFader.Instance.LoadSceneWithFade("VR_PhotoResultScene", 1.0f);
     }
 }

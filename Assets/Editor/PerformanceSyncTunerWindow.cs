@@ -73,7 +73,7 @@ public sealed class PerformanceSyncTunerWindow : EditorWindow
         if (stageDirector == null || musicClip == null || danceClip == null)
         {
             EditorGUILayout.HelpBox(
-                "TestSceneを開いてStageDirectorを指定してください。素材は自動検出できます。",
+                "VR_GameSceneを開いてStageDirectorを指定してください。素材は自動検出できます。",
                 MessageType.Warning);
             EditorGUILayout.EndScrollView();
             return;
@@ -336,7 +336,7 @@ public sealed class PerformanceSyncTunerWindow : EditorWindow
         {
             EditorUtility.DisplayDialog(
                 "StageDirectorが見つかりません",
-                "TestSceneを開いてから再度実行してください。",
+                "VR_GameSceneを開いてから再度実行してください。",
                 "OK");
         }
     }

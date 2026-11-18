@@ -60,7 +60,7 @@ Gameビューを16:9または1920×1080に設定します。Recorder WindowでMo
 - 本編のStartMusicイベント時刻2.0166667秒と先行補正約0.23秒を使用。ステージ起動イベントはライブ2.5秒です。
 - Reaktion、ステージのAnimator、紙吹雪・レーザーなどは既存素材を参照。Pauseでは音声時計・TimeScale・既存挙動を停止し、髪や表情の表示姿勢も保持します。
 - Resetはライブを再生成します。音声解析状態・スポーナー・一時オブジェクトが前のテイクから残らない構成です。
-- 共有Scene・Script・Prefab・Controllerを編集しません。環境の照明・反射・観客配置だけは作成時のTestSceneから撮影Sceneへ引き継いだ配置です。本編のScene配置変更は自動反映されません。
+- 共有Scene・Script・Prefab・Controllerを編集しません。環境の照明・反射・観客配置だけは作成時のVR_GameSceneから撮影Sceneへ引き継いだ配置です。本編のScene配置変更は自動反映されません。
 - PCカメラを使い、XRリグや本編StageDirectorは生成しません。自動生成される既存VRポーズメニューは撮影開始時に破棄します。
 
 ## 制限

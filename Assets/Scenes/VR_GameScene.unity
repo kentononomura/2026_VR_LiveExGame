@@ -191,7 +191,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec9d6be4174063e418d327c8178e3957, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VRSceneTransitionTrigger
-  targetSceneName: VRPhotoResultTest
+  targetSceneName: VR_PhotoResultScene
   fadeDuration: 1
 --- !u!1 &126189387
 GameObject:

@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 
 public class SceneTransitionManager : MonoBehaviour
 {
-    [SerializeField] private string resultSceneName = "VRPhotoResultTest";
-    [SerializeField] private string playSceneName = "TestScene";
+    [SerializeField] private string resultSceneName = "VR_PhotoResultScene";
+    [SerializeField] private string playSceneName = "VR_GameScene";
 
     public void LoadResultScene()
     {

@@ -1,8 +1,8 @@
-# TestScene 音声認識の比較検証
+# VR_GameScene 音声認識の比較検証
 
 ## 切り替え方
 
-TestScene の Hierarchy で `TestSceneVoiceManager` オブジェクトを選び、同名コンポーネントの **Input Settings → Input Mode** を変更する。Play 中も切り替え可能。既存シーンの既定値は `PushToTalk` のまま。
+VR_GameScene の Hierarchy で `TestSceneVoiceManager` オブジェクトを選び、同名コンポーネントの **Input Settings → Input Mode** を変更する。Play 中も切り替え可能。既存シーンの既定値は `PushToTalk` のまま。
 
 | Input Mode | 動作 |
 | --- | --- |

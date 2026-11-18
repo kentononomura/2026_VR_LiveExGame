@@ -17,7 +17,7 @@ public class TitleVoiceManager : MonoBehaviour
 {
     [Header("Scene Transition Settings")]
     [Tooltip("次に遷移するシーンの名前を設定します")]
-    public string targetSceneName = "TestScene";
+    public string targetSceneName = "VR_GameScene";
 
     [Header("Vosk Settings")]
     [Tooltip("StreamingAssets内のVoskモデルフォルダ名")]

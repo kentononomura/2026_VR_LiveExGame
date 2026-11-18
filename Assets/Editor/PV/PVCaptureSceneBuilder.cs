@@ -22,7 +22,7 @@ namespace PVCapture.Editor
                 throw new InvalidOperationException("PV_Capture already exists; it will not be overwritten.");
             var previous = SceneManager.GetActiveScene();
             // Copy only the scene layout/settings. All meshes, materials, controllers and prefab assets stay shared.
-            if (!AssetDatabase.CopyAsset("Assets/Scenes/TestScene.unity", ScenePath))
+            if (!AssetDatabase.CopyAsset("Assets/Scenes/VR_GameScene.unity", ScenePath))
                 throw new InvalidOperationException("Could not create the capture scene.");
             var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
             try

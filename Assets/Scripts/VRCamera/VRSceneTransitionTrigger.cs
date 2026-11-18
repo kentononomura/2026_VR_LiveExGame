@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 
 public class VRSceneTransitionTrigger : MonoBehaviour
 {
-    [SerializeField] private string targetSceneName = "VRPhotoResultTest";
+    [SerializeField] private string targetSceneName = "VR_PhotoResultScene";
     [SerializeField] private float fadeDuration = 1.0f;
 
     private InputAction xButtonAction;

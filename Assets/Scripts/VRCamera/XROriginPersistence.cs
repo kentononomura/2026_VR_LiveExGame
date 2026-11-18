@@ -223,19 +223,19 @@ public class XROriginPersistence : MonoBehaviour
     {
         switch (sceneName)
         {
-            case "TestScene":
-                // TestScene: ステージ正面 Z=6 の位置
+            case "VR_GameScene":
+                // VR_GameScene: ステージ正面 Z=6 の位置
                 transform.position = new Vector3(0f, transform.position.y, 6f);
                 transform.rotation = Quaternion.Euler(0f, 180f, 0f);
 
                 SetPhoneCameraActive(true);
                 SetRayInteractorsActive(false);
                 
-                // TestSceneでのSaber制御はTestSceneVoiceManagerが行うため、ここでは特に弄らない
-                Debug.Log($"[XROriginPersistence] TestScene: Position=({transform.position})");
+                // VR_GameSceneでのSaber制御はTestSceneVoiceManagerが行うため、ここでは特に弄らない
+                Debug.Log($"[XROriginPersistence] VR_GameScene: Position=({transform.position})");
                 break;
 
-            case "VRPhotoResultTest":
+            case "VR_PhotoResultScene":
                 // ResultScene: 重複リグがあればその座標、なければ原点
                 transform.position = foundDuplicate ? new Vector3(targetPos.x, transform.position.y, targetPos.z) : new Vector3(0f, transform.position.y, 0f);
                 transform.rotation = foundDuplicate ? targetRot : Quaternion.identity;
@@ -245,10 +245,10 @@ public class XROriginPersistence : MonoBehaviour
                 // リザルトシーンではUI操作のためにRay（レーザー）を有効化
                 SetRayInteractorsActive(true);
                 
-                // TestSceneで非表示にされたSaber（ペンライト）を復活させる
+                // VR_GameSceneで非表示にされたSaber（ペンライト）を復活させる
                 RestoreSabers();
 
-                Debug.Log($"[XROriginPersistence] VRPhotoResultTest: Position=({transform.position})");
+                Debug.Log($"[XROriginPersistence] VR_PhotoResultScene: Position=({transform.position})");
                 break;
 
             case "TitleScene":
@@ -267,7 +267,7 @@ public class XROriginPersistence : MonoBehaviour
                 
                 SetPhoneCameraActive(false);
                 SetRayInteractorsActive(true); // タイトルもUI操作があるので一応有効に
-                // TestSceneでは右手ペンライトを隠すため、タイトルへ戻った時は両手とも復元する。
+                // VR_GameSceneでは右手ペンライトを隠すため、タイトルへ戻った時は両手とも復元する。
                 RestoreSabers();
                 
                 Debug.Log($"[XROriginPersistence] TitleScene: Position=({transform.position})");
@@ -346,7 +346,7 @@ public class XROriginPersistence : MonoBehaviour
         var sabers = GetComponentsInChildren<Saber>(true);
         foreach (var saber in sabers)
         {
-            saber.enabled = true; // TestSceneでfalseにされたSaberスクリプトを復帰
+            saber.enabled = true; // VR_GameSceneでfalseにされたSaberスクリプトを復帰
             
             // TestSceneVoiceManager で非表示にされた子オブジェクト（SaberVisual等）を復帰
             foreach (Transform child in saber.transform)
