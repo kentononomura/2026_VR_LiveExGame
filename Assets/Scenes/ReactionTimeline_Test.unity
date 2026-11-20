@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 101}
+  - component: {fileID: 102}
+  m_Layer: 0
+  m_Name: Reaction Timeline Laboratory
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &101
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+--- !u!114 &102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a71e3b8a560f4da99405f983ddb4a30b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ReactionTimelineLab.ReactionTimelineLaboratory
+  characterPrefab: {fileID: 100218, guid: 5d037042d9a55c74981b5d7a00780227, type: 3}
+  danceClip: {fileID: 7400000, guid: 4a5d2d624a65daa4a9c8cf5164951049, type: 3}
+  song: {fileID: 8300000, guid: 52021b8d615c74750b2df74afb897b09, type: 3}
+  reactions:
+  - {fileID: 1547356088039643372, guid: 9f67b4ae1a4252c46bbd8cd5b496015b, type: 3}
+  - {fileID: 7400000, guid: e2538d48c03da46a8b0c3b59d39a4cab, type: 3}
+  upperBodyMask: {fileID: 31900000, guid: 0b779ef89768c4a41b9c58bc4bf389ae, type: 2}
+  danceOffset: 2.246667
+  blendIn: 0.3
+  blendOut: 0.7
+  reactionSpeed: 1
+  fullBody: 1
+  quantizeToBeat: 0
+  bpm: 120
+  beatOffset: 0
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 101}
