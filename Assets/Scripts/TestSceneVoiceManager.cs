@@ -42,6 +42,10 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
     public string customMicrophoneName = "";
     public bool showRecognitionLog = true;
 
+    [Header("Recognition Comments")]
+    [Tooltip("未設定ならステージの大型スクリーンを確定結果の受信時に検索します。")]
+    [SerializeField] private StageRecognitionComments recognitionComments;
+
     [Tooltip("一般日本語の自由認識ではなく、下のコマンド文法から認識結果を選ばせます。")]
     [SerializeField] private bool constrainRecognitionToCommands = true;
 
@@ -653,6 +657,9 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
                     $" submit-to-result={(packet.producedAt - packet.submittedAt) * 1000d:F1}ms" +
                     $" result-to-main={(RecognitionClock - packet.producedAt) * 1000d:F1}ms{early} json={packet.json}");
             }
+            // Display finals before command matching: early execution and failed
+            // matches must not suppress the transcript of what Vosk actually heard.
+            if (packet.isFinal) DisplayRecognitionComment(packet.json);
             ProcessRecognitionResult(packet.json, packet.submittedAt);
         }
         finally
@@ -661,6 +668,20 @@ public class TestSceneVoiceManager : MonoBehaviour, ISceneLoadReady
             // early-execution latch until here, then allow the next spoken command.
             if (IsContinuous && packet.isFinal) ResetRecognitionMatchState();
         }
+    }
+
+    private void DisplayRecognitionComment(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return;
+        VoskRecognitionResult result;
+        try { result = JsonUtility.FromJson<VoskRecognitionResult>(json); }
+        catch (System.ArgumentException) { return; }
+        if (result == null || string.IsNullOrWhiteSpace(result.text)) return;
+
+        if (recognitionComments == null)
+            recognitionComments = FindAnyObjectByType<StageRecognitionComments>();
+        if (recognitionComments != null && recognitionComments.isActiveAndEnabled)
+            recognitionComments.Enqueue(result.text);
     }
 
     void Update()
