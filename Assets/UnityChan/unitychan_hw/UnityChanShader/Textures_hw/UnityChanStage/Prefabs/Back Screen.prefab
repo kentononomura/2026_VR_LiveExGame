@@ -93,8 +93,8 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::StageRecognitionComments
   japaneseFont: {fileID: 11400000, guid: 9f217eb13199f324fb763b886144d607, type: 2}
-  travelSeconds: 5
-  fontSize: 64
-  verticalPosition: 0.75
-  maximumPendingComments: 20
+  minimumTravelSeconds: 3
+  maximumTravelSeconds: 7
+  fontSize: 320
+  copiesPerRecognition: 6
   surfaceOffset: 0.02

@@ -43,7 +43,9 @@ MonoBehaviour:
   danceClip: {fileID: 7400000, guid: 4a5d2d624a65daa4a9c8cf5164951049, type: 3}
   song: {fileID: 8300000, guid: 52021b8d615c74750b2df74afb897b09, type: 3}
   reactions:
-  - {fileID: 1547356088039643372, guid: 9f67b4ae1a4252c46bbd8cd5b496015b, type: 3}
+  - {fileID: 1547356088039643372, guid: 6c7d8a22352cf5241bcff3b5c3147acb, type: 3}
+  - {fileID: -3343559320054577611, guid: b3e8426e58923374aa86759e2bf232d0, type: 3}
+  - {fileID: -3175165495928315771, guid: 1481a973d5b0d3945a7b7701f34098de, type: 3}
   - {fileID: 7400000, guid: e2538d48c03da46a8b0c3b59d39a4cab, type: 3}
   upperBodyMask: {fileID: 31900000, guid: 0b779ef89768c4a41b9c58bc4bf389ae, type: 2}
   danceOffset: 2.246667
